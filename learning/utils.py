@@ -105,9 +105,9 @@ def aggregate_data(file_list):
 
         return full_out_filename
 
-    def _merge_aseg(file_list, out_filename):
+    def _merge_fs_tab(file_list, out_filename):
         '''
-        merges list of aseg textfiles
+        merges list of fs_tab textfiles
         '''
         import numpy as np
         import os
@@ -115,8 +115,8 @@ def aggregate_data(file_list):
 
         out_data = None
 
-        for i, aseg_file in enumerate(file_list):
-            df_single = pd.read_csv(aseg_file, index_col=0, delimiter='\t')
+        for i, tab_file in enumerate(file_list):
+            df_single = pd.read_csv(tab_file, index_col=0, delimiter='\t')
             df_single.index.name = 'subject_id'
 
             if i == 0:
@@ -139,8 +139,8 @@ def aggregate_data(file_list):
         out_filename = os.path.splitext(os.path.basename(file_list[0]))[0] + '.npy'
         merged_file = _merge_fs(file_list, out_filename)
 
-    elif out_filename.startswith('aseg'):
-        merged_file = _merge_aseg(file_list, out_filename)
+    elif out_filename.startswith('aseg') | out_filename.startswith('aparc'):
+        merged_file = _merge_fs_tab(file_list, out_filename)
 
     else:
         raise Exception('Cannot guess type from filename: %s' % file_list[0])
@@ -200,7 +200,7 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
         vectorized_data = np.load(in_data_file)
         return vectorized_data
 
-    def _vectorize_aseg(in_data_file):
+    def _vectorize_fs_tab(in_data_file):
         import pandas as pd
         df = pd.read_csv(in_data_file, index_col=0)
         vectorized_data = df.values
@@ -221,9 +221,9 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
         vectorized_data = _vectorize_fs(in_data_file)
         data_type = 'fs_cortical'
 
-    elif os.path.basename(in_data_file).startswith('aseg'):  # aseg: just export values from df
-        vectorized_data = _vectorize_aseg(in_data_file)
-        data_type = 'fs_aseg'
+    elif os.path.basename(in_data_file).startswith('aseg') | os.path.basename(in_data_file).startswith('aparc'):  # aseg: just export values from df
+        vectorized_data = _vectorize_fs_tab(in_data_file)
+        data_type = 'fs_tab'
 
     else:
         raise Exception('Cannot guess type from filename: %s' % in_data_file)
@@ -469,7 +469,7 @@ def save_weights(data, data_type, save_template, outfile_name, masker=None):
         # brain.save_montage(outfile_render, order=['lat', 'med'], orientation='h', border_size=10)
         # brain.close()
 
-    elif data_type == 'fs_aseg':
+    elif data_type == 'fs_tab':
         outfile = os.path.abspath(outfile_name + weights_file_str + '.csv')
         df = pd.read_csv(save_template, index_col=0, delimiter='\t')
         df.index.name = 'subject_id'
