@@ -65,15 +65,16 @@ def learning_prepare_data_wf(working_dir,
                                         name='subject_selection_infosource')
     subject_selection_infosource.iterables = ('selection_criterium', subjects_selection_crit_names_list)
 
-    def out_name_str_fct(selection_criterium, in_data_name):
-        return selection_criterium + '_' + in_data_name
-
-    out_name_str = Node(util.Function(input_names=['selection_criterium', 'in_data_name'],
-                                      output_names=['out_name_str'],
-                                      function=out_name_str_fct),
-                        name='out_name_str')
-    wf.connect(in_data_name_infosource, 'in_data_name', out_name_str, 'in_data_name')
-    wf.connect(subject_selection_infosource, 'selection_criterium', out_name_str, 'selection_criterium')
+    # fixme check if works, then delete
+    # def out_name_str_fct(selection_criterium, in_data_name):
+    #     return selection_criterium + '_' + in_data_name
+    #
+    # out_name_str = Node(util.Function(input_names=['selection_criterium', 'in_data_name'],
+    #                                   output_names=['out_name_str'],
+    #                                   function=out_name_str_fct),
+    #                     name='out_name_str')
+    # wf.connect(in_data_name_infosource, 'in_data_name', out_name_str, 'in_data_name')
+    # wf.connect(subject_selection_infosource, 'selection_criterium', out_name_str, 'selection_criterium')
 
     def get_subjects_info_fct(behav_file, qc_file, subjects_selection_crit_dict, selection_criterium):
         import pandas as pd
@@ -130,6 +131,8 @@ def learning_prepare_data_wf(working_dir,
 
         if 'fwhm' in data_lookup_dict[in_data_name].keys():
             fwhm = data_lookup_dict[in_data_name]['fwhm']
+            if fwhm == 0:
+                fwhm = None
         else:
             fwhm = None
 
@@ -144,10 +147,9 @@ def learning_prepare_data_wf(working_dir,
             use_diagonal = False
 
         if 'use_fishers_z' in data_lookup_dict[in_data_name].keys():
-            use_fishers_z = data_lookup_dict[in_data_name]['use_diagonal']
+            use_fishers_z = data_lookup_dict[in_data_name]['use_fishers_z']
         else:
             use_fishers_z = False
-
 
         return file_list, matrix_name, parcellation_path, fwhm, mask_path, use_diagonal, use_fishers_z
 
@@ -177,9 +179,10 @@ def learning_prepare_data_wf(working_dir,
     wf.connect(create_file_list, 'file_list', aggregate_subjects, 'file_list')
 
     vectorized_data = Node(
-        util.Function(input_names=['in_data_file', 'mask_file', 'matrix_name', 'parcellation_path', 'fwhm', 'use_diagonal'],
-                      output_names=['vectorized_data', 'vectorized_data_file', 'data_type', 'masker'],
-                      function=vectorize_data),
+        util.Function(
+            input_names=['in_data_file', 'mask_file', 'matrix_name', 'parcellation_path', 'fwhm', 'use_diagonal'],
+            output_names=['vectorized_data', 'vectorized_data_file', 'data_type', 'masker'],
+            function=vectorize_data),
         name='vectorized_data')
     wf.connect(aggregate_subjects, 'merged_file', vectorized_data, 'in_data_file')
     wf.connect(create_file_list, 'mask_path', vectorized_data, 'mask_file')
@@ -358,7 +361,8 @@ def learning_prepare_data_wf(working_dir,
         # performace results df
         df_res_out_file = os.path.abspath(data_str + '_df_results.txt')
         df_res = pd.DataFrame(
-            {'FD_res': regress_confounds, 'r2_train': [train_r2], 'MAE_train': [train_mae], 'r2_test': [test_r2], 'MAE_test': [test_mae]},
+            {'FD_res': regress_confounds, 'r2_train': [train_r2], 'MAE_train': [train_mae], 'r2_test': [test_r2],
+             'MAE_test': [test_mae]},
             columns=['FD_res', 'r2_train', 'MAE_train', 'r2_test', 'MAE_test'], index=[data_str])
         df_res.to_csv(df_res_out_file)
 
@@ -380,11 +384,12 @@ def learning_prepare_data_wf(working_dir,
         df_out_file = os.path.join(os.getcwd(), data_str + '_df_predicted.pkl')
         df.to_pickle(df_out_file)
 
-        return scatter_file, brain_age_scatter_file, df_out_file, model_out_file
+        return scatter_file, brain_age_scatter_file, df_out_file, model_out_file, df_res_out_file
 
     prediction_split = Node(
         util.Function(input_names=['X_file', 'df_file', 'data_str', 'regress_confounds', 'use_grid_search'],
-                      output_names=['scatter_file', 'brain_age_scatter_file', 'df_out_file', 'model_out_file', 'df_res_out_file'],
+                      output_names=['scatter_file', 'brain_age_scatter_file', 'df_out_file', 'model_out_file',
+                                    'df_res_out_file'],
                       function=run_prediction_split),
         name='prediction_split')
     the_in_node = prediction_split
