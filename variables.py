@@ -11,15 +11,12 @@ ds_root_path = '/scr/adenauer2/Franz/LeiCA_LIFE'
 
 subjects_list_folder = '/home/raid2/liem/data/LIFE/behavioral'
 
-subject_file = '/home/raid2/liem/data/LIFE/LIFE16_preprocessed_subjects_list_n2557.txt'
-
+subject_file = '/scr/adenauer2/Franz/LIFE16/LIFE16_preprocessed_subjects_list_n2557.txt'
 
 behav_file = '/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_behav_n2648.pkl'
 qc_file = '/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_QC_n2557.pkl'
 
 subjects_list = load_subjects_list(subject_file)
-
-
 
 in_data_root_path = '/data/liem-1/LIFE/preprocessed'
 
@@ -54,12 +51,16 @@ masks = ['GM', 'WM', 'GM_WM', 'brain_mask']
 resolutions = [3, 4, 8]
 
 for m in metrics.keys():
+    if m == 'reho':
+        use_diagonal = True
+    else:
+        use_diagonal = False
     for ma in masks:
         for r in resolutions:
             m_str = '%s_%s_%smm' % (m, ma, r)
             ma_str = '%s_MNI_%smm' % (ma, r)
             data_lookup_dict[m_str] = {'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}', metrics[m]),
-                                       'mask_name': ma_str}
+                                       'mask_name': ma_str, 'use_diagonal': use_diagonal}
 
 resolutions = [5, 4, 3]
 hemis = ['lh', 'rh']
@@ -71,9 +72,15 @@ for h in hemis:
             for s in smoothing:
                 m_str = '%s_%s_fsav%s_%smm' % (h, m, r, s)
                 surf_str = 'surfs/%s.%s.fsaverage%s.%smm.mgz' % (h, metrics[m], r, s)
-                data_lookup_dict[m_str] = {'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}', surf_str)}
+                data_lookup_dict[m_str] = {
+                    'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}', surf_str)}
 
-data_lookup_dict['aseg'] = {'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}', 'parcstats/aseg')}
+data_lookup_dict['aseg'] = {'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}/parcstats/aseg')}
+for h in ['lh', 'rh']:
+    for m in ['area', 'thickness', 'volume']:
+        m_str = 'aparc_%s_%s' % (h, m)
+        f_str = 'aparc.%s.a2009s.%s' % (h, m)
+        data_lookup_dict[m_str] = {'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}/parcstats', f_str)}
 
 data_lookup_dict['variability_std'] = {
     'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}', 'variability/ts_std.nii.gz')}
@@ -95,12 +102,12 @@ data_lookup_dict['gordon_noBP'] = {'matrix_name': 'correlation',
                                    'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
                                                             'con_mat/matrix/bp_None.None/gordon/matrix.pkl')}
 data_lookup_dict['gordon_BP'] = {'matrix_name': 'correlation',
-                                     'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
-                                                              'con_mat/matrix/bp_0.01.0.1/gordon/matrix.pkl')}
+                                 'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                          'con_mat/matrix/bp_0.01.0.1/gordon/matrix.pkl')}
 
 data_lookup_dict['gordon_BP_ds'] = {'matrix_name': 'correlation',
-                                     'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
-                                                              'con_mat/matrix/bp_0.01.0.1/gordon/matrix_downsampled.pkl'),
+                                    'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                             'con_mat/matrix/bp_0.01.0.1/gordon/matrix_downsampled.pkl'),
                                     'use_diagonal': True}
 
 
