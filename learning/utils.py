@@ -1,14 +1,6 @@
 __author__ = 'franzliem'
 
 
-def r_to_z(r):
-    import numpy as np
-    m_r = r.copy()
-    m_r[m_r == 1] = 1 - 1e-15
-    m_r[m_r == -1] = -1 + 1e-15
-    return np.arctanh(m_r)
-
-
 def aggregate_data(file_list):
     '''
     tries to guess data type.
@@ -169,7 +161,7 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
 
         return vectorized_data, masker
 
-    def _vectorize_matrix(in_data_file, matrix_name, use_diagonal=False, use_fishers_z=False):
+    def _vectorize_matrix(in_data_file, matrix_name, use_diagonal=False):
 
         def _lower_tria_vector(m, use_diagonal=False):
             '''
@@ -214,7 +206,7 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
         data_type = '3dnii'
 
     elif in_data_file.endswith('.pkl'):  # pickled matrix files
-        vectorized_data = _vectorize_matrix(in_data_file, matrix_name)
+        vectorized_data = _vectorize_matrix(in_data_file, matrix_name, use_diagonal)
         data_type = 'matrix'
 
     elif in_data_file.endswith('.npy'):  # freesurfer: already vetorized
@@ -229,11 +221,16 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
     else:
         raise Exception('Cannot guess type from filename: %s' % in_data_file)
 
-    vectorized_data_file = os.path.join(os.getcwd(), 'vectorized_data.npy')
+    def r_to_z(r):
+        r = np.atleast_1d(r)
+        r[r == 1] = 1 - 1e-15
+        r[r == -1] = -1 + 1e-15
+        return np.arctanh(r)
 
     if use_fishers_z:
         vectorized_data = r_to_z(vectorized_data)
 
+    vectorized_data_file = os.path.join(os.getcwd(), 'vectorized_data.npy')
     np.save(vectorized_data_file, vectorized_data)
     return vectorized_data, vectorized_data_file, data_type, masker
 

@@ -180,7 +180,7 @@ def learning_prepare_data_wf(working_dir,
 
     vectorized_data = Node(
         util.Function(
-            input_names=['in_data_file', 'mask_file', 'matrix_name', 'parcellation_path', 'fwhm', 'use_diagonal'],
+            input_names=['in_data_file', 'mask_file', 'matrix_name', 'parcellation_path', 'fwhm', 'use_diagonal', 'use_fishers_z'],
             output_names=['vectorized_data', 'vectorized_data_file', 'data_type', 'masker'],
             function=vectorize_data),
         name='vectorized_data')
