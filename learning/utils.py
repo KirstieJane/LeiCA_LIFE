@@ -1,11 +1,13 @@
 __author__ = 'franzliem'
 
+
 def r_to_z(r):
     import numpy as np
     m_r = r.copy()
     m_r[m_r == 1] = 1 - 1e-15
     m_r[m_r == -1] = -1 + 1e-15
     return np.arctanh(m_r)
+
 
 def aggregate_data(file_list):
     '''
@@ -149,7 +151,8 @@ def aggregate_data(file_list):
     return merged_file, save_template
 
 
-def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal=False, use_fishers_z=False):
+def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal=False,
+                   use_fishers_z=False):
     import os, pickle
     import numpy as np
 
@@ -190,9 +193,6 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
         # get lower triangle
         vectorized_data = _lower_tria_vector(matrix[matrix_name], use_diagonal=use_diagonal)
 
-        if use_fishers_z:
-            vectorized_data = r_to_z(vectorized_data)
-
         return vectorized_data
 
     def _vectorize_fs(in_data_file):
@@ -221,7 +221,8 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
         vectorized_data = _vectorize_fs(in_data_file)
         data_type = 'fs_cortical'
 
-    elif os.path.basename(in_data_file).startswith('aseg') | os.path.basename(in_data_file).startswith('aparc'):  # aseg: just export values from df
+    elif os.path.basename(in_data_file).startswith('aseg') | os.path.basename(in_data_file).startswith(
+            'aparc'):  # aseg: just export values from df
         vectorized_data = _vectorize_fs_tab(in_data_file)
         data_type = 'fs_tab'
 
@@ -229,6 +230,9 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
         raise Exception('Cannot guess type from filename: %s' % in_data_file)
 
     vectorized_data_file = os.path.join(os.getcwd(), 'vectorized_data.npy')
+
+    if use_fishers_z:
+        vectorized_data = r_to_z(vectorized_data)
 
     np.save(vectorized_data_file, vectorized_data)
     return vectorized_data, vectorized_data_file, data_type, masker
