@@ -3,7 +3,8 @@
 .ipynb_checkpoints/
 screenlog*
 optunity
-git_OLD/
+.git_OLD/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
