@@ -21,8 +21,7 @@ plugin_name = 'MultiProc'
 # subject selection criteria
 # # # # # # # # # #
 subjects_selection_crit_dict = {}
-# subjects_selection_crit_dict['adult_healthy_F'] = ["df[df.sex == \'F\']", 'df[df.no_axis_1]', 'df[df.age >= 18]']
-# subjects_selection_crit_dict['adult_F'] = ["df[df.sex == \'F\']", 'df[df.age >= 18]']
+
 subjects_selection_crit_dict['bothSexes'] = ["df[df.n_TRs>294]"]
 subjects_selection_crit_dict['bothSexes_neuH'] = ["df[df.n_TRs>294]", "df[df.neurol_healthy==True]"]
 subjects_selection_crit_dict['bothSexes_FD01_035'] = ["df[df.n_TRs>294]", "df[df.mean_FD_P<.35]", "df[df.mean_FD_P>.1]"]
@@ -62,18 +61,15 @@ subjects_selection_crit_dict['uniform_sample'] = ["df[df.n_TRs>294]", "df[df.uni
 #                      ['lh_ct', 'rh_ct', 'lh_csa', 'rh_csa', 'aseg', 'falff', 'alff', 'reho', 'variability_std']]  # , ['falff'], ['alff_craddock_788']]
 # in_data_name_list = [['alff_GM_3mm'], ['alff_GM_4mm'], ['alff_GM_8mm'],['alff_GM_WM_3mm'], ['alff_GM_WM_4mm'], ['alff_GM_WM_8mm'], ['alff_brain_mask_3mm'], ['alff_brain_mask_4mm'], ['alff_brain_mask_8mm'], ['alff_brain_mask_3mm_frauke']]
 in_data_name_list = [
-    # ['lh_ct_fsav5_sm0', 'rh_ct_fsav5_sm0'], ['lh_csa_fsav5_sm0', 'rh_csa_fsav5_sm0'], ['aseg'],
-    # ['lh_ct_fsav5_sm0', 'rh_ct_fsav5_sm0', 'lh_csa_fsav5_sm0', 'rh_csa_fsav5_sm0', 'aseg'],
-    # ['lh_ct_fsav5_sm10', 'rh_ct_fsav5_sm10'], ['lh_csa_fsav5_sm10', 'rh_csa_fsav5_sm10'],
-    # ['lh_ct_fsav5_sm10', 'rh_ct_fsav5_sm10', 'lh_csa_fsav5_sm10', 'rh_csa_fsav5_sm10', 'aseg'],
-    #
-    # ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0'], ['lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0'], ['aseg'],
-    # ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0', 'lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0', 'aseg'],
-    # ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0', 'lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0', 'aseg', 'alff_z_GM_WM_4mm_sm0'],
+    ['lh_ct_fsav5_sm0', 'rh_ct_fsav5_sm0'], ['lh_csa_fsav5_sm0', 'rh_csa_fsav5_sm0'], ['aseg'],
+    ['lh_ct_fsav5_sm0', 'rh_ct_fsav5_sm0', 'lh_csa_fsav5_sm0', 'rh_csa_fsav5_sm0', 'aseg'],
+    ['lh_ct_fsav5_sm10', 'rh_ct_fsav5_sm10'], ['lh_csa_fsav5_sm10', 'rh_csa_fsav5_sm10'],
+    ['lh_ct_fsav5_sm10', 'rh_ct_fsav5_sm10', 'lh_csa_fsav5_sm10', 'rh_csa_fsav5_sm10', 'aseg'],
 
-    #
-    # ['aparc_lh_thickness', 'aparc_rh_thickness'], ['aparc_lh_area', 'aparc_rh_area'],
-    # ['aseg', 'aparc_lh_thickness', 'aparc_rh_thickness', 'aparc_lh_area', 'aparc_rh_area'],
+    ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0'], ['lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0'], ['aseg'],
+    ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0', 'lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0', 'aseg'],
+    ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0', 'lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0', 'aseg', 'alff_z_GM_WM_4mm_sm0'],
+
 
     ['alff_z_GM_WM_3mm_sm0'], ['falff_z_GM_WM_3mm_sm0'],
 
@@ -90,12 +86,16 @@ in_data_name_list = [
     ['variability_std_GM_WM_8mm_sm0'], ['variability_std_GM_WM_8mm_sm8'],
     ['variability_std_z_GM_WM_4mm_sm0'], ['variability_std_z_GM_WM_4mm_sm8'],
     ['variability_std_z_GM_WM_8mm_sm0'], ['variability_std_z_GM_WM_8mm_sm8'],
-    # ['craddock_205_BP'], ['craddock_788_BP'], ['gordon_BP'], ['gordon_BP_ds'],
+    ['craddock_205_BP'], ['craddock_788_BP'], ['gordon_BP'], ['gordon_BP_ds'],
 
+    ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0', 'lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0', 'aseg', 'alff_z_GM_WM_4mm_sm0', 'falff_z_GM_WM_4mm_sm0', 'reho_GM_WM_4mm_sm0', 'craddock_205_BP'],
     # ['behav_wml_fazekas'], #['behav_wml_load_tiv_ln'], ['behav_wml_load_tiv'], ['behav_wml_load'], ['behav_wml_fazekas'],
 ]
 
-subjects_selection_crit_names_list = ['bothSexes']  # , 'bothSexes_neuH']
+in_data_name_list=[['alff_z_GM_WM_4mm_sm0']]
+subjects_selection_crit_names_list = ['bothSexes_neuH']
+
+target_list = ['age', 'mean_FD_P']
 
 import warnings
 
@@ -110,5 +110,6 @@ learning_prepare_data_wf(working_dir=working_dir,
                          data_lookup_dict=data_lookup_dict,
                          subjects_selection_crit_dict=subjects_selection_crit_dict,
                          subjects_selection_crit_names_list=subjects_selection_crit_names_list,
+                         target_list=target_list,
                          use_n_procs=use_n_procs,
                          plugin_name=plugin_name)
