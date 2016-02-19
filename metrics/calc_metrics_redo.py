@@ -37,8 +37,7 @@ def calc_local_metrics(brain_mask,
     wf.base_dir = os.path.join(working_dir)
 
     nipype_cfg = dict(logging=dict(workflow_level='DEBUG'), execution={'stop_on_first_crash': True,
-                                                                       # fixme
-                                                                       'remove_unnecessary_outputs': False,
+                                                                       'remove_unnecessary_outputs': True,
                                                                        'job_finished_timeout': 15})
     config.update_config(nipype_cfg)
     wf.config['execution']['crashdump_dir'] = os.path.join(working_dir, 'crash')

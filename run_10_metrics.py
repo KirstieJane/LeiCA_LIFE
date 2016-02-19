@@ -5,6 +5,9 @@ import os
 from metrics.calc_metrics import calc_local_metrics
 from variables import template_dir, in_data_root_path, subjects_list, metrics_root_path, wd_root_path, selectfiles_templates
 
+
+#fixme
+subjects_list = subjects_list[:1]
 working_dir_base = os.path.join(wd_root_path, 'wd_metrics')
 ds_dir_base = os.path.join(metrics_root_path, 'metrics')
 
@@ -32,6 +35,7 @@ parcellations_dict['gordon'] = {
 use_n_procs = 5
 #plugin_name = 'MultiProc'
 plugin_name = 'CondorDAGMan'
+
 
 for subject_id in subjects_list:
     working_dir = os.path.join(working_dir_base, subject_id)
