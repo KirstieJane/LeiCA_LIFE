@@ -88,6 +88,8 @@ def learning_prepare_data_wf(working_dir,
         #   EXCLUSION HERE:
         for eval_str in subjects_selection_crit_dict[selection_criterium]:
             df = eval(eval_str)
+        # FIXME THINK ABOIUT HOW TO HANDLE BEHAV NANS
+        # df.dropna(inplace=True)
 
         df_out_file = os.path.join(os.getcwd(), 'df_use.csv')
         df.to_csv(df_out_file)
@@ -151,7 +153,13 @@ def learning_prepare_data_wf(working_dir,
         else:
             use_fishers_z = False
 
-        return file_list, matrix_name, parcellation_path, fwhm, mask_path, use_diagonal, use_fishers_z
+        if 'df_col_names' in data_lookup_dict[in_data_name].keys():
+            df_col_names = data_lookup_dict[in_data_name]['df_col_names']
+        else:
+            df_col_names = None
+
+
+        return file_list, matrix_name, parcellation_path, fwhm, mask_path, use_diagonal, use_fishers_z, df_col_names
 
     create_file_list = Node(util.Function(input_names=['subjects_list',
                                                        'in_data_name',
@@ -164,7 +172,8 @@ def learning_prepare_data_wf(working_dir,
                                                         'fwhm',
                                                         'mask_path',
                                                         'use_diagonal',
-                                                        'use_fishers_z'],
+                                                        'use_fishers_z',
+                                                        'df_col_names'],
                                           function=create_file_list_fct),
                             name='create_file_list')
     wf.connect(get_subjects_info, 'subjects_list', create_file_list, 'subjects_list')
@@ -172,15 +181,17 @@ def learning_prepare_data_wf(working_dir,
     create_file_list.inputs.data_lookup_dict = data_lookup_dict
     create_file_list.inputs.template_lookup_dict = template_lookup_dict
 
-    aggregate_subjects = Node(util.Function(input_names=['file_list'],
+    aggregate_subjects = Node(util.Function(input_names=['file_list', 'df_file', 'df_col_names'],
                                             output_names=['merged_file', 'save_template'],
                                             function=aggregate_data),
                               name='aggregate_subjects')
     wf.connect(create_file_list, 'file_list', aggregate_subjects, 'file_list')
+    wf.connect(get_subjects_info, 'df_out_pickle_file', aggregate_subjects, 'df_file')
+    wf.connect(create_file_list, 'df_col_names', aggregate_subjects, 'df_col_names')
 
     vectorized_data = Node(
         util.Function(
-            input_names=['in_data_file', 'mask_file', 'matrix_name', 'parcellation_path', 'fwhm', 'use_diagonal', 'use_fishers_z'],
+            input_names=['in_data_file', 'mask_file', 'matrix_name', 'parcellation_path', 'fwhm', 'use_diagonal', 'use_fishers_z', 'df_col_names'],
             output_names=['vectorized_data', 'vectorized_data_file', 'data_type', 'masker'],
             function=vectorize_data),
         name='vectorized_data')
@@ -191,6 +202,7 @@ def learning_prepare_data_wf(working_dir,
     wf.connect(create_file_list, 'fwhm', vectorized_data, 'fwhm')
     wf.connect(create_file_list, 'use_diagonal', vectorized_data, 'use_diagonal')
     wf.connect(create_file_list, 'use_fishers_z', vectorized_data, 'use_fishers_z')
+    wf.connect(create_file_list, 'df_col_names', vectorized_data, 'df_col_names')
 
     def aggregate_multimodal_metrics_fct(multimodal_list, vectorized_data_file, vectorized_data_names,
                                          selection_criterium, data_type_list, save_template_list, masker_list):

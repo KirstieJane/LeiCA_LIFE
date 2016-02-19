@@ -1,11 +1,14 @@
 __author__ = 'franzliem'
 
 
-def aggregate_data(file_list):
+def aggregate_data(file_list, df_file, df_col_names):
     '''
     tries to guess data type.
     loads data an concatenates it.
     returns merged file path
+
+    special case behav files (detected by df_col_names not None):
+    here the data already is aggregated; just pipe through (save)
     '''
 
     import os
@@ -136,6 +139,10 @@ def aggregate_data(file_list):
     elif out_filename.startswith('aseg') | out_filename.startswith('aparc'):
         merged_file = _merge_fs_tab(file_list, out_filename)
 
+    elif df_col_names:
+        merged_file = df_file
+        file_list = [df_file]
+
     else:
         raise Exception('Cannot guess type from filename: %s' % file_list[0])
 
@@ -143,8 +150,8 @@ def aggregate_data(file_list):
     return merged_file, save_template
 
 
-def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal=False,
-                   use_fishers_z=False):
+def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal,
+                   use_fishers_z, df_col_names):
     import os, pickle
     import numpy as np
 
@@ -198,6 +205,12 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
         vectorized_data = df.values
         return vectorized_data
 
+    def _vectorize_behav_df(in_data_file, df_col_names):
+        import pandas as pd
+        df = pd.read_pickle(in_data_file)
+        vectorized_data = df[df_col_names].values
+        return vectorized_data
+
     # RUN
     masker = None
 
@@ -205,7 +218,7 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
         vectorized_data, masker = _vectorize_nii(in_data_file, mask_file, parcellation_path, fwhm)
         data_type = '3dnii'
 
-    elif in_data_file.endswith('.pkl'):  # pickled matrix files
+    elif in_data_file.endswith('.pkl') & (df_col_names is None):  # pickled matrix files
         vectorized_data = _vectorize_matrix(in_data_file, matrix_name, use_diagonal)
         data_type = 'matrix'
 
@@ -217,6 +230,11 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
             'aparc'):  # aseg: just export values from df
         vectorized_data = _vectorize_fs_tab(in_data_file)
         data_type = 'fs_tab'
+
+    elif df_col_names:  # X from df behav
+        vectorized_data = _vectorize_behav_df(in_data_file, df_col_names)
+        data_type = 'behav'
+
 
     else:
         raise Exception('Cannot guess type from filename: %s' % in_data_file)
@@ -470,11 +488,18 @@ def save_weights(data, data_type, save_template, outfile_name, masker=None):
         # brain.save_montage(outfile_render, order=['lat', 'med'], orientation='h', border_size=10)
         # brain.close()
 
-    elif data_type == 'fs_tab':
+    elif (data_type == 'fs_tab'):
         outfile = os.path.abspath(outfile_name + weights_file_str + '.csv')
         df = pd.read_csv(save_template, index_col=0, delimiter='\t')
         df.index.name = 'subject_id'
         df.drop(df.index[0], axis=0, inplace=True)
+        df.loc[outfile_name, :] = data
+        df.to_csv(outfile)
+        df.T.plot(kind='barh')
+
+    elif data_type == 'behav':
+        outfile = os.path.abspath(outfile_name + weights_file_str + '.csv')
+        df = pd.read_pickle(save_template)
         df.loc[outfile_name, :] = data
         df.to_csv(outfile)
         df.T.plot(kind='barh')
