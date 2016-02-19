@@ -11,10 +11,10 @@ ds_root_path = '/scr/adenauer2/Franz/LeiCA_LIFE'
 
 subjects_list_folder = '/home/raid2/liem/data/LIFE/behavioral'
 
-subject_file = '/scr/adenauer2/Franz/LIFE16/LIFE16_preprocessed_subjects_list_n2556.txt'
+subject_file = '/scr/adenauer2/Franz/LIFE16/LIFE16_preprocessed_subjects_list_n2557.txt'
 
 behav_file = '/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_behav_n2648.pkl'
-qc_file = '/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_QC_n2556.pkl'
+qc_file = '/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_QC_n2557.pkl'
 
 subjects_list = load_subjects_list(subject_file)
 
@@ -46,7 +46,10 @@ metrics = {'alff': 'alff/alff.nii.gz',
            'falff': 'alff/falff.nii.gz',
            'alff_z': 'alff_z/alff_zstd.nii.gz',
            'falff_z': 'alff_z/falff_zstd.nii.gz',
-           'reho': 'reho/ReHo.nii.gz'}
+           'reho': 'reho/ReHo.nii.gz',
+           'variability_std': 'variability/ts_std.nii.gz',
+           'variability_std_z': 'variability/ts_std_zstd.nii.gz'}
+
 masks = ['GM', 'WM', 'GM_WM', 'brain_mask']
 resolutions = [3, 4, 8]
 
@@ -60,8 +63,9 @@ for m in metrics.keys():
             for r in resolutions:
                 m_str = '%s_%s_%smm_sm%s' % (m, ma, r, s)
                 ma_str = '%s_MNI_%smm' % (ma, r)
-                data_lookup_dict[m_str] = {'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}', metrics[m]),
-                                           'mask_name': ma_str, 'use_diagonal': use_diagonal, 'fwhm': s}
+                data_lookup_dict[m_str] = {
+                    'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}', metrics[m]),
+                    'mask_name': ma_str, 'use_diagonal': use_diagonal, 'fwhm': s}
 
 resolutions = [5, 4, 3]
 hemis = ['lh', 'rh']
@@ -82,9 +86,6 @@ for h in ['lh', 'rh']:
         m_str = 'aparc_%s_%s' % (h, m)
         f_str = 'aparc.%s.a2009s.%s' % (h, m)
         data_lookup_dict[m_str] = {'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}/parcstats', f_str)}
-
-data_lookup_dict['variability_std'] = {
-    'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}', 'variability/ts_std.nii.gz')}
 
 data_lookup_dict['craddock_205_noBP'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
                                          'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
@@ -111,7 +112,13 @@ data_lookup_dict['gordon_BP_ds'] = {'matrix_name': 'correlation', 'use_fishers_z
                                                              'con_mat/matrix/bp_0.01.0.1/gordon/matrix_downsampled.pkl'),
                                     'use_diagonal': True}
 
+# BEHAV
 
+data_lookup_dict['behav_wml_load_tiv_ln'] = {'df_col_names': ['WML_lesionload_norm_tiv_ln'],
+                                             'path_str': '{subject_id}'}  # path_str for compatibilty
+data_lookup_dict['behav_wml_load_tiv'] = {'df_col_names': ['WML_lesionload_norm_tiv'], 'path_str': '{subject_id}'}
+data_lookup_dict['behav_wml_load'] = {'df_col_names': ['WML_lesionload'], 'path_str': '{subject_id}'}
+data_lookup_dict['behav_wml_fazekas'] = {'df_col_names': ['MRT_BefundFazekas'], 'path_str': '{subject_id}'}
 
 # # # # # # # # # #
 # template_lookup_dict
