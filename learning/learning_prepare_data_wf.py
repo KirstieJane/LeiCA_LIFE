@@ -70,6 +70,12 @@ def learning_prepare_data_wf(working_dir,
                              name='target_infosource')
     target_infosource.iterables = ('target_name', target_list)
 
+
+
+    ###############################################################################################################
+    # GET SUBJECTS INFO
+    # create subjects list based on selection criteria
+
     def get_subjects_info_fct(behav_file, qc_file, subjects_selection_crit_dict, selection_criterium):
         import pandas as pd
         import os
@@ -96,15 +102,27 @@ def learning_prepare_data_wf(working_dir,
         return df_out_file, df_out_pickle_file, subjects_list
 
     get_subjects_info = Node(
-        util.Function(input_names=['behav_file', 'qc_file', 'subjects_selection_crit_dict', 'selection_criterium'],
-                      output_names=['df_out_file', 'df_out_pickle_file', 'subjects_list'],
+        util.Function(input_names=['behav_file',
+                                   'qc_file',
+                                   'subjects_selection_crit_dict',
+                                   'selection_criterium'],
+                      output_names=['df_out_file',
+                                    'df_out_pickle_file',
+                                    'subjects_list'],
                       function=get_subjects_info_fct),
         name='get_subjects_info')
+
     get_subjects_info.inputs.behav_file = behav_file
     get_subjects_info.inputs.qc_file = qc_file
     get_subjects_info.inputs.subjects_selection_crit_dict = subjects_selection_crit_dict
     wf.connect(subject_selection_infosource, 'selection_criterium', get_subjects_info, 'selection_criterium')
     wf.connect(get_subjects_info, 'df_out_file', ds, 'test')
+
+
+
+    ###############################################################################################################
+    # CREAE FILE LIST
+    # of files that will be aggregted
 
     def create_file_list_fct(subjects_list, in_data_name, data_lookup_dict, template_lookup_dict):
         file_list = []
@@ -170,6 +188,12 @@ def learning_prepare_data_wf(working_dir,
     create_file_list.inputs.data_lookup_dict = data_lookup_dict
     create_file_list.inputs.template_lookup_dict = template_lookup_dict
 
+
+
+    ###############################################################################################################
+    # AGGREGATE SUBJECTS
+    # create single modality group file
+
     aggregate_subjects = Node(util.Function(input_names=['file_list', 'df_file', 'df_col_names'],
                                             output_names=['merged_file', 'save_template'],
                                             function=aggregate_data),
@@ -178,11 +202,25 @@ def learning_prepare_data_wf(working_dir,
     wf.connect(get_subjects_info, 'df_out_pickle_file', aggregate_subjects, 'df_file')
     wf.connect(create_file_list, 'df_col_names', aggregate_subjects, 'df_col_names')
 
+
+
+    ###############################################################################################################
+    # VECTORIZE DATA
+    # create numpy arrays (shape subj x features)
+
     vectorized_data = Node(
         util.Function(
-            input_names=['in_data_file', 'mask_file', 'matrix_name', 'parcellation_path', 'fwhm', 'use_diagonal',
-                         'use_fishers_z', 'df_col_names'],
-            output_names=['vectorized_data', 'vectorized_data_file', 'data_type', 'masker'],
+            input_names=['in_data_file',
+                         'mask_file',
+                         'matrix_name',
+                         'parcellation_path',
+                         'fwhm', 'use_diagonal',
+                         'use_fishers_z',
+                         'df_col_names'],
+            output_names=['vectorized_data',
+                          'vectorized_data_file',
+                          'data_type',
+                          'masker'],
             function=vectorize_data),
         name='vectorized_data')
     wf.connect(aggregate_subjects, 'merged_file', vectorized_data, 'in_data_file')
@@ -193,6 +231,12 @@ def learning_prepare_data_wf(working_dir,
     wf.connect(create_file_list, 'use_diagonal', vectorized_data, 'use_diagonal')
     wf.connect(create_file_list, 'use_fishers_z', vectorized_data, 'use_fishers_z')
     wf.connect(create_file_list, 'df_col_names', vectorized_data, 'df_col_names')
+
+
+
+    ###############################################################################################################
+    # AGGREGATE MULTIMODAL METRICS
+    # stack single modality arrays
 
     def aggregate_multimodal_metrics_fct(multimodal_list, target_name, vectorized_data_file, vectorized_data_names,
                                          selection_criterium, data_type_list, save_template_list, masker_list):
@@ -235,8 +279,10 @@ def learning_prepare_data_wf(working_dir,
                                                                        'data_type_list',
                                                                        'save_template_list',
                                                                        'masker_list'],
-                                                          output_names=['multimodal_in_name', 'multimodal_out_name',
-                                                                        'X_file', 'backproject_info'],
+                                                          output_names=['multimodal_in_name',
+                                                                        'multimodal_out_name',
+                                                                        'X_file',
+                                                                        'backproject_info'],
                                                           function=aggregate_multimodal_metrics_fct),
                                             joinfield=['vectorized_data_file', 'data_type_list', 'save_template_list',
                                                        'masker_list'],
@@ -256,16 +302,11 @@ def learning_prepare_data_wf(working_dir,
 
 
 
-
-
-
-
-    #####################################
+    ###############################################################################################################
     # RUN PREDICTION
-    #####################################
+    #
 
     def run_prediction_split(X_file, target_name, df_file, data_str, regress_confounds=False, use_grid_search=False):
-
         import os, pickle
         import numpy as np
         import pandas as pd
@@ -297,11 +338,12 @@ def learning_prepare_data_wf(working_dir,
         confounds = df[['mean_FD_P']].values
 
         ind = range(X.shape[0])
-        X_train, X_test, y_train, y_test, confounds_train, confounds_test, ind_train, ind_test = train_test_split(X, y,
-                                                                                                                  confounds,
-                                                                                                                  ind,
-                                                                                                                  test_size=0.5,
-                                                                                                                  random_state=666)
+        X_train, X_test, y_train, y_test, \
+        confounds_train, confounds_test, ind_train, ind_test = train_test_split(X, y,
+                                                                                confounds,
+                                                                                ind,
+                                                                                test_size=0.5,
+                                                                                random_state=666)
         df['split_group'].iloc[ind_train] = 'train'
         df['split_group'].iloc[ind_test] = 'test'
 
@@ -392,8 +434,16 @@ def learning_prepare_data_wf(working_dir,
 
     prediction_split = Node(
         util.Function(
-            input_names=['X_file', 'target_name', 'df_file', 'data_str', 'regress_confounds', 'use_grid_search'],
-            output_names=['scatter_file', 'brain_age_scatter_file', 'df_out_file', 'model_out_file',
+            input_names=['X_file',
+                         'target_name',
+                         'df_file',
+                         'data_str',
+                         'regress_confounds',
+                         'use_grid_search'],
+            output_names=['scatter_file',
+                          'brain_age_scatter_file',
+                          'df_out_file',
+                          'model_out_file',
                           'df_res_out_file'],
             function=run_prediction_split),
         name='prediction_split')
@@ -411,9 +461,12 @@ def learning_prepare_data_wf(working_dir,
     wf.connect(the_in_node, 'df_out_file', ds_pdf, the_out_node_str + 'predicted')
     wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
 
-    #####################################
-    # Backproject prediction weights
-    #####################################
+
+
+    ###############################################################################################################
+    # BACKPROJECT PREDICTION WEIGHTS
+    # map weights back to single modality original format (e.g., nifti or matrix)
+
     def backproject_and_split_weights_fct(trained_model_file, backproject_info, data_str):
         from LeiCA_LIFE.learning.utils import backproject_weights_to_full_space, save_weights
 
@@ -450,9 +503,12 @@ def learning_prepare_data_wf(working_dir,
     wf.connect(the_in_node, 'out_file_list', ds_pdf, the_out_node_str + '.@weights')
     wf.connect(the_in_node, 'out_file_render_list', ds_pdf, the_out_node_str + 'renders.@renders')
 
-    #####################################
+
+
+    ###############################################################################################################
     # RUN PREDICTION FD regressed out
-    #####################################
+    #
+
     prediction_split_regFD = prediction_split.clone('prediction_split_regFD')
     the_in_node = prediction_split_regFD
     the_out_node_str = '03_split_regFD'
@@ -469,7 +525,6 @@ def learning_prepare_data_wf(working_dir,
     wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
 
     backproject_and_split_regFD_weights = backproject_and_split_weights.clone('backproject_and_split_regFD_weights')
-
     the_from_node = prediction_split_regFD
     the_in_node = backproject_and_split_regFD_weights
     the_out_node_str = '03_split_regFD_weights_'
@@ -478,6 +533,8 @@ def learning_prepare_data_wf(working_dir,
     wf.connect(aggregate_multimodal_metrics, 'multimodal_out_name', the_in_node, 'data_str')
     wf.connect(the_in_node, 'out_file_list', ds_pdf, the_out_node_str + '.@weights')
     wf.connect(the_in_node, 'out_file_render_list', ds_pdf, the_out_node_str + 'renders.@renders')
+
+
 
 
 
