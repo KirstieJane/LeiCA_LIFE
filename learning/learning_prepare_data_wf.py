@@ -82,8 +82,9 @@ def learning_prepare_data_wf(working_dir,
         #   EXCLUSION HERE:
         for eval_str in subjects_selection_crit_dict[selection_criterium]:
             df = eval(eval_str)
-        # FIXME THINK ABOIUT HOW TO HANDLE BEHAV NANS
+        # FIXME THINK ABOIUT HOW TO HANDLE BEHAV NANS: FOR NOW JUST IMPUTE
         # df.dropna(inplace=True)
+        df.fillna(df.mean(), inplace=True)
 
         df_out_file = os.path.join(os.getcwd(), 'df_use.csv')
         df.to_csv(df_out_file)
@@ -390,10 +391,11 @@ def learning_prepare_data_wf(working_dir,
         return scatter_file, brain_age_scatter_file, df_out_file, model_out_file, df_res_out_file
 
     prediction_split = Node(
-        util.Function(input_names=['X_file', 'target_name', 'df_file', 'data_str', 'regress_confounds', 'use_grid_search'],
-                      output_names=['scatter_file', 'brain_age_scatter_file', 'df_out_file', 'model_out_file',
-                                    'df_res_out_file'],
-                      function=run_prediction_split),
+        util.Function(
+            input_names=['X_file', 'target_name', 'df_file', 'data_str', 'regress_confounds', 'use_grid_search'],
+            output_names=['scatter_file', 'brain_age_scatter_file', 'df_out_file', 'model_out_file',
+                          'df_res_out_file'],
+            function=run_prediction_split),
         name='prediction_split')
     the_in_node = prediction_split
     the_out_node_str = '01_split_'
