@@ -16,7 +16,7 @@ def learning_prepare_data_wf(working_dir,
     import nipype.interfaces.utility as util
     import nipype.interfaces.io as nio
     from nipype.interfaces.freesurfer.utils import ImageInfo
-    from utils import aggregate_data, vectorize_data
+    from utils import aggregate_data, vectorize_data, vectorize_data_ss
     from itertools import chain
 
     # ensure in_data_name_list is list of lists
@@ -91,6 +91,8 @@ def learning_prepare_data_wf(working_dir,
         # FIXME THINK ABOIUT HOW TO HANDLE BEHAV NANS: FOR NOW JUST IMPUTE
         # df.dropna(inplace=True)
         df.fillna(df.mean(), inplace=True)
+
+        assert df.index.is_unique, 'duplicates in df. fix before cont.'
 
         df_out_file = os.path.join(os.getcwd(), 'df_use.csv')
         df.to_csv(df_out_file)
@@ -202,6 +204,49 @@ def learning_prepare_data_wf(working_dir,
     wf.connect(get_subjects_info, 'df_out_pickle_file', aggregate_subjects, 'df_file')
     wf.connect(create_file_list, 'df_col_names', aggregate_subjects, 'df_col_names')
 
+
+
+    ###############################################################################################################
+    # TEST
+    # vecotrize first, aggregate second
+
+    vectorized_data_ss = MapNode(util.Function(input_names=['in_data_file',
+                                                            'mask_file',
+                                                            'matrix_name',
+                                                            'parcellation_path',
+                                                            'fwhm',
+                                                            'use_diagonal',
+                                                            'use_fishers_z',
+                                                            'df_file',
+                                                            'df_col_names'],
+                                               output_names=['vectorized_data',
+                                                             'vectorized_data_file',
+                                                             'data_type',
+                                                             'masker'],
+                                               function=vectorize_data_ss),
+                                 iterfield=['in_data_file'],
+                                 name='vectorized_data_ss')
+    wf.connect(create_file_list, 'file_list', vectorized_data_ss, 'in_data_file')
+
+
+    wf.connect(create_file_list, 'mask_path', vectorized_data_ss, 'mask_file')
+    wf.connect(create_file_list, 'matrix_name', vectorized_data_ss, 'matrix_name')
+    wf.connect(create_file_list, 'parcellation_path', vectorized_data_ss, 'parcellation_path')
+    wf.connect(create_file_list, 'fwhm', vectorized_data_ss, 'fwhm')
+    wf.connect(create_file_list, 'use_diagonal', vectorized_data_ss, 'use_diagonal')
+    wf.connect(create_file_list, 'use_fishers_z', vectorized_data_ss, 'use_fishers_z')
+    wf.connect(get_subjects_info, 'df_out_pickle_file', vectorized_data_ss, 'df_file')
+    wf.connect(create_file_list, 'df_col_names', vectorized_data_ss, 'df_col_names')
+
+
+
+    aggregate_subjects_ss = Node(util.Function(input_names=['file_list', 'df_file', 'df_col_names'],
+                                            output_names=['merged_file', 'save_template'],
+                                            function=aggregate_data),
+                              name='aggregate_subjects_ss')
+    wf.connect(vectorized_data_ss, 'vectorized_data_file', aggregate_subjects_ss, 'file_list')
+    wf.connect(get_subjects_info, 'df_out_pickle_file', aggregate_subjects_ss, 'df_file')
+    wf.connect(create_file_list, 'df_col_names', aggregate_subjects_ss, 'df_col_names')
 
 
     ###############################################################################################################

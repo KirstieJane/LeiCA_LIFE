@@ -12,10 +12,13 @@ def aggregate_data(file_list, df_file, df_col_names):
     import os
     import nibabel as nb
     import numpy as np
-    from learning.helpers import _merge_nii, _merge_matrix, _merge_fs, _merge_fs_tab
+    from learning.helpers import _merge_nii, _merge_matrix, _merge_fs, _merge_fs_tab, _merge_npy, _vectorize_fs_ss
 
     out_filename = os.path.basename(file_list[0])
-    if file_list[0].endswith('.nii.gz'):  # 3d nii files
+    if file_list[0].endswith('.npy'): # already vectorized single subject data
+        merged_file = _merge_npy(file_list, out_filename)
+
+    elif file_list[0].endswith('.nii.gz'):  # 3d nii files
         merged_file = _merge_nii(file_list, out_filename)
 
     elif file_list[0].endswith('.pkl'):  # pickled matrix files
@@ -37,6 +40,54 @@ def aggregate_data(file_list, df_file, df_col_names):
 
     save_template = file_list[0]
     return merged_file, save_template
+
+
+def vectorize_data_ss(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal,
+                   use_fishers_z, df_file, df_col_names):
+    import os, pickle
+    import numpy as np
+    from learning.helpers import _vectorize_nii, _vectorize_matrix, _vectorize_fs_ss, _vectorize_fs_tab, _vectorize_behav_df_ss
+
+    masker = None
+    if in_data_file.endswith('.nii.gz'):  # 3d nii files
+        vectorized_data, masker = _vectorize_nii(in_data_file, mask_file, parcellation_path, fwhm)
+        data_type = '3dnii'
+
+    elif in_data_file.endswith('.pkl') & (df_col_names is None):  # pickled matrix files
+        vectorized_data = _vectorize_matrix(in_data_file, matrix_name, use_diagonal)
+        data_type = 'matrix'
+
+    elif in_data_file.endswith('.mgz'):  # freesurfer: already vetorized
+        vectorized_data = _vectorize_fs_ss(in_data_file)
+        data_type = 'fs_cortical'
+
+    elif os.path.basename(in_data_file).startswith('aseg') | os.path.basename(in_data_file).startswith(
+            'aparc'):  # aseg: just export values from df
+        vectorized_data = _vectorize_fs_tab(in_data_file)
+        data_type = 'fs_tab'
+
+    elif df_col_names:  # X from df behav
+        # subject is inputted via in_data_file
+        vectorized_data = _vectorize_behav_df_ss(df_file=df_file, subject=in_data_file, df_col_names=df_col_names)
+        data_type = 'behav'
+
+    else:
+        raise Exception('Cannot guess type from filename: %s' % in_data_file)
+
+    def r_to_z(r):
+        r = np.atleast_1d(r)
+        r[r == 1] = 1 - 1e-15
+        r[r == -1] = -1 + 1e-15
+        return np.arctanh(r)
+
+    if use_fishers_z:
+        vectorized_data = r_to_z(vectorized_data)
+
+    vectorized_data = np.atleast_2d(vectorized_data)
+
+    vectorized_data_file = os.path.join(os.getcwd(), 'vectorized_data.npy')
+    np.save(vectorized_data_file, vectorized_data)
+    return vectorized_data, vectorized_data_file, data_type, masker
 
 
 def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal,
