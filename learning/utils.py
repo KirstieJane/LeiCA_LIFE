@@ -1,6 +1,4 @@
-
-
-def aggregate_data(file_list, df_file, df_col_names):
+def aggregate_data(file_list):
     '''
     tries to guess data type.
     loads data an concatenates it.
@@ -12,41 +10,28 @@ def aggregate_data(file_list, df_file, df_col_names):
     import os
     import nibabel as nb
     import numpy as np
-    from learning.helpers import _merge_nii, _merge_matrix, _merge_fs, _merge_fs_tab, _merge_npy, _vectorize_fs_ss
 
-    out_filename = os.path.basename(file_list[0])
-    if file_list[0].endswith('.npy'): # already vectorized single subject data
-        merged_file = _merge_npy(file_list, out_filename)
+    out_data = None
+    for file_ss in file_list:
+        in_data_ss = np.atleast_2d(np.load(file_ss))
+        if out_data is None:
+            out_data = in_data_ss
+        else:
+            out_data = np.concatenate((out_data, in_data_ss))
 
-    elif file_list[0].endswith('.nii.gz'):  # 3d nii files
-        merged_file = _merge_nii(file_list, out_filename)
-
-    elif file_list[0].endswith('.pkl'):  # pickled matrix files
-        merged_file = _merge_matrix(file_list, out_filename)
-
-    elif file_list[0].endswith('.mgz'):  # freesurfer surface files
-        out_filename = os.path.splitext(os.path.basename(file_list[0]))[0] + '.npy'
-        merged_file = _merge_fs(file_list, out_filename)
-
-    elif out_filename.startswith('aseg') | out_filename.startswith('aparc'):
-        merged_file = _merge_fs_tab(file_list, out_filename)
-
-    elif df_col_names:
-        merged_file = df_file
-        file_list = [df_file]
-
-    else:
-        raise Exception('Cannot guess type from filename: %s' % file_list[0])
-
-    save_template = file_list[0]
-    return merged_file, save_template
+    merged_file = os.path.abspath('vectorized_aggregated_data.npy')
+    np.save(merged_file, out_data)
+    return merged_file
 
 
-def vectorize_data_ss(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal,
+def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal,
                    use_fishers_z, df_file, df_col_names):
     import os, pickle
     import numpy as np
-    from learning.helpers import _vectorize_nii, _vectorize_matrix, _vectorize_fs_ss, _vectorize_fs_tab, _vectorize_behav_df_ss
+    from learning.vectorize_helpers import _vectorize_nii, _vectorize_matrix, _vectorize_fs, _vectorize_fs_tab, \
+        _vectorize_behav_df
+
+    save_template = in_data_file
 
     masker = None
     if in_data_file.endswith('.nii.gz'):  # 3d nii files
@@ -58,7 +43,7 @@ def vectorize_data_ss(in_data_file, mask_file, matrix_name, parcellation_path, f
         data_type = 'matrix'
 
     elif in_data_file.endswith('.mgz'):  # freesurfer: already vetorized
-        vectorized_data = _vectorize_fs_ss(in_data_file)
+        vectorized_data = _vectorize_fs(in_data_file)
         data_type = 'fs_cortical'
 
     elif os.path.basename(in_data_file).startswith('aseg') | os.path.basename(in_data_file).startswith(
@@ -68,8 +53,9 @@ def vectorize_data_ss(in_data_file, mask_file, matrix_name, parcellation_path, f
 
     elif df_col_names:  # X from df behav
         # subject is inputted via in_data_file
-        vectorized_data = _vectorize_behav_df_ss(df_file=df_file, subject=in_data_file, df_col_names=df_col_names)
+        vectorized_data = _vectorize_behav_df(df_file=df_file, subject=in_data_file, df_col_names=df_col_names)
         data_type = 'behav'
+        save_template = df_file
 
     else:
         raise Exception('Cannot guess type from filename: %s' % in_data_file)
@@ -87,54 +73,7 @@ def vectorize_data_ss(in_data_file, mask_file, matrix_name, parcellation_path, f
 
     vectorized_data_file = os.path.join(os.getcwd(), 'vectorized_data.npy')
     np.save(vectorized_data_file, vectorized_data)
-    return vectorized_data, vectorized_data_file, data_type, masker
-
-
-def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal,
-                   use_fishers_z, df_col_names):
-    import os, pickle
-    import numpy as np
-    from nilearn.input_data import NiftiMasker, NiftiLabelsMasker
-    from learning.helpers import _vectorize_nii, _vectorize_matrix, _vectorize_fs, _vectorize_fs_tab, _vectorize_behav_df
-
-    masker = None
-
-    if in_data_file.endswith('.nii.gz'):  # 3d nii files
-        vectorized_data, masker = _vectorize_nii(in_data_file, mask_file, parcellation_path, fwhm)
-        data_type = '3dnii'
-
-    elif in_data_file.endswith('.pkl') & (df_col_names is None):  # pickled matrix files
-        vectorized_data = _vectorize_matrix(in_data_file, matrix_name, use_diagonal)
-        data_type = 'matrix'
-
-    elif in_data_file.endswith('.npy'):  # freesurfer: already vetorized
-        vectorized_data = _vectorize_fs(in_data_file)
-        data_type = 'fs_cortical'
-
-    elif os.path.basename(in_data_file).startswith('aseg') | os.path.basename(in_data_file).startswith(
-            'aparc'):  # aseg: just export values from df
-        vectorized_data = _vectorize_fs_tab(in_data_file)
-        data_type = 'fs_tab'
-
-    elif df_col_names:  # X from df behav
-        vectorized_data = _vectorize_behav_df(in_data_file, df_col_names)
-        data_type = 'behav'
-
-    else:
-        raise Exception('Cannot guess type from filename: %s' % in_data_file)
-
-    def r_to_z(r):
-        r = np.atleast_1d(r)
-        r[r == 1] = 1 - 1e-15
-        r[r == -1] = -1 + 1e-15
-        return np.arctanh(r)
-
-    if use_fishers_z:
-        vectorized_data = r_to_z(vectorized_data)
-
-    vectorized_data_file = os.path.join(os.getcwd(), 'vectorized_data.npy')
-    np.save(vectorized_data_file, vectorized_data)
-    return vectorized_data, vectorized_data_file, data_type, masker
+    return vectorized_data_file, data_type, masker, save_template
 
 
 def pred_real_scatter(y_test, y_test_predicted, title_str, in_data_name):

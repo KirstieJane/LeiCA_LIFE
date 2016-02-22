@@ -16,7 +16,7 @@ def learning_prepare_data_wf(working_dir,
     import nipype.interfaces.utility as util
     import nipype.interfaces.io as nio
     from nipype.interfaces.freesurfer.utils import ImageInfo
-    from utils import aggregate_data, vectorize_data, vectorize_data_ss
+    from utils import aggregate_data, vectorize_data
     from itertools import chain
 
     # ensure in_data_name_list is list of lists
@@ -76,23 +76,43 @@ def learning_prepare_data_wf(working_dir,
     # GET SUBJECTS INFO
     # create subjects list based on selection criteria
 
-    def get_subjects_info_fct(behav_file, qc_file, subjects_selection_crit_dict, selection_criterium):
+    def create_df_fct(behav_file, qc_file):
+        import pandas as pd
+        import os
+        df = pd.read_pickle(behav_file)
+        qc = pd.read_pickle(qc_file)
+        df_all = qc.join(df, how='inner')
+
+        assert df_all.index.is_unique, 'duplicates in df index. fix before cont.'
+
+        # FIXME THINK ABOIUT HOW TO HANDLE BEHAV NANS: FOR NOW JUST IMPUTE
+        # df.dropna(inplace=True)
+        df_all.fillna(df_all.mean(), inplace=True)
+
+        df_all_subjects_pickle_file = os.path.abspath('df_all.pkl')
+        df_all.to_pickle(df_all_subjects_pickle_file)
+
+        full_subjects_list = df_all.index.values
+
+        return df_all_subjects_pickle_file, full_subjects_list
+
+    create_df = Node(util.Function(input_names=['behav_file', 'qc_file'],
+                                   output_names=['df_all_subjects_pickle_file', 'full_subjects_list'],
+                                   function=create_df_fct),
+                     name='create_df')
+    create_df.inputs.behav_file = behav_file
+    create_df.inputs.qc_file = qc_file
+
+    def get_subjects_info_fct(df_all_subjects_pickle_file, subjects_selection_crit_dict, selection_criterium):
         import pandas as pd
         import os
         import numpy as np
 
-        df = pd.read_pickle(behav_file)
-        qc = pd.read_pickle(qc_file)
-        df = qc.join(df, how='inner')
+        df = pd.read_pickle(df_all_subjects_pickle_file)
 
         #   EXCLUSION HERE:
         for eval_str in subjects_selection_crit_dict[selection_criterium]:
             df = eval(eval_str)
-        # FIXME THINK ABOIUT HOW TO HANDLE BEHAV NANS: FOR NOW JUST IMPUTE
-        # df.dropna(inplace=True)
-        df.fillna(df.mean(), inplace=True)
-
-        assert df.index.is_unique, 'duplicates in df. fix before cont.'
 
         df_out_file = os.path.join(os.getcwd(), 'df_use.csv')
         df.to_csv(df_out_file)
@@ -101,21 +121,20 @@ def learning_prepare_data_wf(working_dir,
 
         subjects_list = df.index.values
 
-        return df_out_file, df_out_pickle_file, subjects_list
+        return df_out_file, df_out_pickle_file, df_all_subjects_pickle_file, subjects_list
 
     get_subjects_info = Node(
-        util.Function(input_names=['behav_file',
-                                   'qc_file',
+        util.Function(input_names=['df_all_subjects_pickle_file',
                                    'subjects_selection_crit_dict',
                                    'selection_criterium'],
                       output_names=['df_out_file',
                                     'df_out_pickle_file',
+                                    'df_all_subjects',
                                     'subjects_list'],
                       function=get_subjects_info_fct),
         name='get_subjects_info')
 
-    get_subjects_info.inputs.behav_file = behav_file
-    get_subjects_info.inputs.qc_file = qc_file
+    wf.connect(create_df, 'df_all_subjects_pickle_file', get_subjects_info, 'df_all_subjects_pickle_file')
     get_subjects_info.inputs.subjects_selection_crit_dict = subjects_selection_crit_dict
     wf.connect(subject_selection_infosource, 'selection_criterium', get_subjects_info, 'selection_criterium')
     wf.connect(get_subjects_info, 'df_out_file', ds, 'test')
@@ -185,97 +204,122 @@ def learning_prepare_data_wf(working_dir,
                                                         'df_col_names'],
                                           function=create_file_list_fct),
                             name='create_file_list')
-    wf.connect(get_subjects_info, 'subjects_list', create_file_list, 'subjects_list')
+    #wf.connect(get_subjects_info, 'subjects_list', create_file_list, 'subjects_list')
+    wf.connect(create_df, 'full_subjects_list', create_file_list, 'subjects_list')
     wf.connect(in_data_name_infosource, 'in_data_name', create_file_list, 'in_data_name')
     create_file_list.inputs.data_lookup_dict = data_lookup_dict
     create_file_list.inputs.template_lookup_dict = template_lookup_dict
 
 
 
-    ###############################################################################################################
-    # AGGREGATE SUBJECTS
-    # create single modality group file
-
-    aggregate_subjects = Node(util.Function(input_names=['file_list', 'df_file', 'df_col_names'],
-                                            output_names=['merged_file', 'save_template'],
-                                            function=aggregate_data),
-                              name='aggregate_subjects')
-    wf.connect(create_file_list, 'file_list', aggregate_subjects, 'file_list')
-    wf.connect(get_subjects_info, 'df_out_pickle_file', aggregate_subjects, 'df_file')
-    wf.connect(create_file_list, 'df_col_names', aggregate_subjects, 'df_col_names')
-
+    # ###############################################################################################################
+    # # AGGREGATE SUBJECTS
+    # # create single modality group file
+    #
+    # aggregate_subjects = Node(util.Function(input_names=['file_list', 'df_file', 'df_col_names'],
+    #                                         output_names=['merged_file', 'save_template'],
+    #                                         function=aggregate_data),
+    #                           name='aggregate_subjects')
+    # wf.connect(create_file_list, 'file_list', aggregate_subjects, 'file_list')
+    # wf.connect(get_subjects_info, 'df_out_pickle_file', aggregate_subjects, 'df_file')
+    # wf.connect(create_file_list, 'df_col_names', aggregate_subjects, 'df_col_names')
+    #
 
 
     ###############################################################################################################
     # TEST
     # vecotrize first, aggregate second
 
-    vectorized_data_ss = MapNode(util.Function(input_names=['in_data_file',
-                                                            'mask_file',
-                                                            'matrix_name',
-                                                            'parcellation_path',
-                                                            'fwhm',
-                                                            'use_diagonal',
-                                                            'use_fishers_z',
-                                                            'df_file',
-                                                            'df_col_names'],
-                                               output_names=['vectorized_data',
-                                                             'vectorized_data_file',
-                                                             'data_type',
-                                                             'masker'],
-                                               function=vectorize_data_ss),
-                                 iterfield=['in_data_file'],
-                                 name='vectorized_data_ss')
-    wf.connect(create_file_list, 'file_list', vectorized_data_ss, 'in_data_file')
-
-
-    wf.connect(create_file_list, 'mask_path', vectorized_data_ss, 'mask_file')
-    wf.connect(create_file_list, 'matrix_name', vectorized_data_ss, 'matrix_name')
-    wf.connect(create_file_list, 'parcellation_path', vectorized_data_ss, 'parcellation_path')
-    wf.connect(create_file_list, 'fwhm', vectorized_data_ss, 'fwhm')
-    wf.connect(create_file_list, 'use_diagonal', vectorized_data_ss, 'use_diagonal')
-    wf.connect(create_file_list, 'use_fishers_z', vectorized_data_ss, 'use_fishers_z')
-    wf.connect(get_subjects_info, 'df_out_pickle_file', vectorized_data_ss, 'df_file')
-    wf.connect(create_file_list, 'df_col_names', vectorized_data_ss, 'df_col_names')
-
-
-
-    aggregate_subjects_ss = Node(util.Function(input_names=['file_list', 'df_file', 'df_col_names'],
-                                            output_names=['merged_file', 'save_template'],
-                                            function=aggregate_data),
-                              name='aggregate_subjects_ss')
-    wf.connect(vectorized_data_ss, 'vectorized_data_file', aggregate_subjects_ss, 'file_list')
-    wf.connect(get_subjects_info, 'df_out_pickle_file', aggregate_subjects_ss, 'df_file')
-    wf.connect(create_file_list, 'df_col_names', aggregate_subjects_ss, 'df_col_names')
-
-
-    ###############################################################################################################
-    # VECTORIZE DATA
-    # create numpy arrays (shape subj x features)
-
-    vectorized_data = Node(util.Function(input_names=['in_data_file',
-                                                      'mask_file',
-                                                      'matrix_name',
-                                                      'parcellation_path',
-                                                      'fwhm', 'use_diagonal',
-                                                      'use_fishers_z',
-                                                      'df_col_names'],
-                                         output_names=['vectorized_data',
-                                                       'vectorized_data_file',
-                                                       'data_type',
-                                                       'masker'],
-                                         function=vectorize_data),
-                           name='vectorized_data')
-    wf.connect(aggregate_subjects, 'merged_file', vectorized_data, 'in_data_file')
+    vectorized_data = MapNode(util.Function(input_names=['in_data_file',
+                                                         'mask_file',
+                                                         'matrix_name',
+                                                         'parcellation_path',
+                                                         'fwhm',
+                                                         'use_diagonal',
+                                                         'use_fishers_z',
+                                                         'df_file',
+                                                         'df_col_names'],
+                                            output_names=['vectorized_data_file',
+                                                          'data_type',
+                                                          'masker',
+                                                          'save_template'],
+                                            function=vectorize_data),
+                              iterfield=['in_data_file'],
+                              name='vectorized_data')
+    wf.connect(create_file_list, 'file_list', vectorized_data, 'in_data_file')
     wf.connect(create_file_list, 'mask_path', vectorized_data, 'mask_file')
     wf.connect(create_file_list, 'matrix_name', vectorized_data, 'matrix_name')
     wf.connect(create_file_list, 'parcellation_path', vectorized_data, 'parcellation_path')
     wf.connect(create_file_list, 'fwhm', vectorized_data, 'fwhm')
     wf.connect(create_file_list, 'use_diagonal', vectorized_data, 'use_diagonal')
     wf.connect(create_file_list, 'use_fishers_z', vectorized_data, 'use_fishers_z')
+    wf.connect(create_df, 'df_all_subjects_pickle_file', vectorized_data, 'df_file')
     wf.connect(create_file_list, 'df_col_names', vectorized_data, 'df_col_names')
 
 
+
+
+    ###############################################################################################################
+    # PICK SUBJECTS LIST
+    # from the full file list, only select subjects for aggregation that fulfill selection criteria
+    def pick_subjects_fct(full_subjects_list, selected_subjects_list, data_files_list):
+        import os, numpy as np
+
+        selected_subjects = np.zeros(len(full_subjects_list)).astype(np.bool)
+        for subject in selected_subjects_list:
+            ind = np.where(np.array(full_subjects_list) == np.array(subject))
+            selected_subjects[ind] = True
+        selected_data_files_list = np.array(data_files_list)[selected_subjects]
+        return selected_data_files_list
+
+    pick_subjects = Node(util.Function(input_names=['full_subjects_list', 'selected_subjects_list', 'data_files_list'],
+                                       output_names=['selected_data_files_list'],
+                                       function=pick_subjects_fct),
+                         name='pick_subjects')
+    wf.connect(create_df, 'full_subjects_list', pick_subjects, 'full_subjects_list')
+    wf.connect(get_subjects_info, 'subjects_list', pick_subjects, 'selected_subjects_list')
+    wf.connect(vectorized_data, 'vectorized_data_file', pick_subjects, 'data_files_list')
+
+
+    ###############################################################################################################
+    # AGGREGATE SUBJECTS
+    # stack single subject np arrays vertically
+    aggregate_subjects = Node(util.Function(input_names=['file_list'],
+                                            output_names=['merged_file'],
+                                            function=aggregate_data),
+                              name='aggregate_subjects')
+    # wf.connect(vectorized_data, 'vectorized_data_file', aggregate_subjects, 'file_list')
+    wf.connect(pick_subjects, 'selected_data_files_list', aggregate_subjects, 'file_list')
+
+
+
+    # ###############################################################################################################
+    # # VECTORIZE DATA
+    # # create numpy arrays (shape subj x features)
+    #
+    # vectorized_data = Node(util.Function(input_names=['in_data_file',
+    #                                                   'mask_file',
+    #                                                   'matrix_name',
+    #                                                   'parcellation_path',
+    #                                                   'fwhm', 'use_diagonal',
+    #                                                   'use_fishers_z',
+    #                                                   'df_col_names'],
+    #                                      output_names=['vectorized_data',
+    #                                                    'vectorized_data_file',
+    #                                                    'data_type',
+    #                                                    'masker'],
+    #                                      function=vectorize_data),
+    #                        name='vectorized_data')
+    # wf.connect(aggregate_subjects, 'merged_file', vectorized_data, 'in_data_file')
+    # wf.connect(create_file_list, 'mask_path', vectorized_data, 'mask_file')
+    # wf.connect(create_file_list, 'matrix_name', vectorized_data, 'matrix_name')
+    # wf.connect(create_file_list, 'parcellation_path', vectorized_data, 'parcellation_path')
+    # wf.connect(create_file_list, 'fwhm', vectorized_data, 'fwhm')
+    # wf.connect(create_file_list, 'use_diagonal', vectorized_data, 'use_diagonal')
+    # wf.connect(create_file_list, 'use_fishers_z', vectorized_data, 'use_fishers_z')
+    # wf.connect(create_file_list, 'df_col_names', vectorized_data, 'df_col_names')
+    #
+    #
 
     ###############################################################################################################
     # AGGREGATE MULTIMODAL METRICS
@@ -338,10 +382,10 @@ def learning_prepare_data_wf(working_dir,
     wf.connect(mulitmodal_in_data_name_infosource, 'multimodal_in_data_name', aggregate_multimodal_metrics,
                'multimodal_list')
     wf.connect(target_infosource, 'target_name', aggregate_multimodal_metrics, 'target_name')
-    wf.connect(vectorized_data, 'vectorized_data_file', aggregate_multimodal_metrics, 'vectorized_data_file')
+    wf.connect(aggregate_subjects, 'merged_file', aggregate_multimodal_metrics, 'vectorized_data_file')
     wf.connect(subject_selection_infosource, 'selection_criterium', aggregate_multimodal_metrics, 'selection_criterium')
     wf.connect(vectorized_data, 'data_type', aggregate_multimodal_metrics, 'data_type_list')
-    wf.connect(aggregate_subjects, 'save_template', aggregate_multimodal_metrics, 'save_template_list')
+    wf.connect(vectorized_data, 'save_template', aggregate_multimodal_metrics, 'save_template_list')
     wf.connect(vectorized_data, 'masker', aggregate_multimodal_metrics, 'masker_list')
     wf.connect(aggregate_multimodal_metrics, 'X_file', ds, 'multimodal_test')
     aggregate_multimodal_metrics.inputs.vectorized_data_names = in_data_name_list_unique
@@ -365,6 +409,7 @@ def learning_prepare_data_wf(working_dir,
         from sklearn.metrics import r2_score, mean_absolute_error
         from sklearn.cross_validation import train_test_split
         from sklearn.grid_search import GridSearchCV
+        # for some reason, only full path works
         from LeiCA_LIFE.learning.utils import pred_real_scatter, plot_brain_age, residualize_group_data
         from sklearn.decomposition import PCA
         from sklearn.feature_selection import RFE
@@ -528,7 +573,7 @@ def learning_prepare_data_wf(working_dir,
             masker = backproject_info[m]['masker']
             out_name = data_str + '__' + m
 
-            out_file, out_file_render = save_weights(out_data, data_type, save_template, out_name, masker)
+            out_file, out_file_render = save_weights(out_data, data_type[0], save_template[0], out_name, masker[0])
             out_file_list.append(out_file)
             out_file_render_list.append(out_file_render)
 
@@ -587,9 +632,9 @@ def learning_prepare_data_wf(working_dir,
     #####################################
     # RUN WF
     #####################################
-    # wf.write_graph(dotfilename=wf.name, graph2use='colored', format='pdf')  # 'hierarchical')
-    # wf.write_graph(dotfilename=wf.name, graph2use='orig', format='pdf')
-    # wf.write_graph(dotfilename=wf.name, graph2use='flat', format='pdf')
+    wf.write_graph(dotfilename=wf.name, graph2use='colored', format='pdf')  # 'hierarchical')
+    wf.write_graph(dotfilename=wf.name, graph2use='orig', format='pdf')
+    wf.write_graph(dotfilename=wf.name, graph2use='flat', format='pdf')
 
     if plugin_name == 'CondorDAGMan':
         wf.run(plugin=plugin_name)
