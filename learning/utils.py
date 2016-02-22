@@ -55,7 +55,7 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
         # subject is inputted via in_data_file
         vectorized_data = _vectorize_behav_df(df_file=df_file, subject=in_data_file, df_col_names=df_col_names)
         data_type = 'behav'
-        save_template = df_file
+        save_template = df_file[df_col_names]
 
     else:
         raise Exception('Cannot guess type from filename: %s' % in_data_file)

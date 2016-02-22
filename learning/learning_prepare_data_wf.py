@@ -212,19 +212,6 @@ def learning_prepare_data_wf(working_dir,
 
 
 
-    # ###############################################################################################################
-    # # AGGREGATE SUBJECTS
-    # # create single modality group file
-    #
-    # aggregate_subjects = Node(util.Function(input_names=['file_list', 'df_file', 'df_col_names'],
-    #                                         output_names=['merged_file', 'save_template'],
-    #                                         function=aggregate_data),
-    #                           name='aggregate_subjects')
-    # wf.connect(create_file_list, 'file_list', aggregate_subjects, 'file_list')
-    # wf.connect(get_subjects_info, 'df_out_pickle_file', aggregate_subjects, 'df_file')
-    # wf.connect(create_file_list, 'df_col_names', aggregate_subjects, 'df_col_names')
-    #
-
 
     ###############################################################################################################
     # TEST
