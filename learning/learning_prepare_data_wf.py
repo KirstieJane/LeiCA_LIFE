@@ -208,21 +208,19 @@ def learning_prepare_data_wf(working_dir,
     # VECTORIZE DATA
     # create numpy arrays (shape subj x features)
 
-    vectorized_data = Node(
-        util.Function(
-            input_names=['in_data_file',
-                         'mask_file',
-                         'matrix_name',
-                         'parcellation_path',
-                         'fwhm', 'use_diagonal',
-                         'use_fishers_z',
-                         'df_col_names'],
-            output_names=['vectorized_data',
-                          'vectorized_data_file',
-                          'data_type',
-                          'masker'],
-            function=vectorize_data),
-        name='vectorized_data')
+    vectorized_data = Node(util.Function(input_names=['in_data_file',
+                                                      'mask_file',
+                                                      'matrix_name',
+                                                      'parcellation_path',
+                                                      'fwhm', 'use_diagonal',
+                                                      'use_fishers_z',
+                                                      'df_col_names'],
+                                         output_names=['vectorized_data',
+                                                       'vectorized_data_file',
+                                                       'data_type',
+                                                       'masker'],
+                                         function=vectorize_data),
+                           name='vectorized_data')
     wf.connect(aggregate_subjects, 'merged_file', vectorized_data, 'in_data_file')
     wf.connect(create_file_list, 'mask_path', vectorized_data, 'mask_file')
     wf.connect(create_file_list, 'matrix_name', vectorized_data, 'matrix_name')
@@ -242,6 +240,9 @@ def learning_prepare_data_wf(working_dir,
                                          selection_criterium, data_type_list, save_template_list, masker_list):
         import numpy as np
         import os
+        # the following imoport has to be left in?
+        from nilearn.input_data import NiftiMasker, NiftiLabelsMasker
+
         backproject_info = {}
 
         metrics_index_list = [vectorized_data_names.index(m) for m in multimodal_list]
@@ -265,8 +266,8 @@ def learning_prepare_data_wf(working_dir,
 
             backproject_info[vectorized_data_names[i]] = subject_info
 
-        multimodal_in_name = '_'.join(multimodal_list)
-        multimodal_out_name = target_name + '_' + selection_criterium + '_' + multimodal_in_name
+        multimodal_in_name = '__'.join(multimodal_list)
+        multimodal_out_name = target_name + '__' + selection_criterium + '__' + multimodal_in_name
         X_file = os.path.join(os.getcwd(), multimodal_in_name + '.npy')
         np.save(X_file, X)
         return multimodal_in_name, multimodal_out_name, X_file, backproject_info
@@ -541,9 +542,9 @@ def learning_prepare_data_wf(working_dir,
     #####################################
     # RUN WF
     #####################################
-    wf.write_graph(dotfilename=wf.name, graph2use='colored', format='pdf')  # 'hierarchical')
-    wf.write_graph(dotfilename=wf.name, graph2use='orig', format='pdf')
-    wf.write_graph(dotfilename=wf.name, graph2use='flat', format='pdf')
+    # wf.write_graph(dotfilename=wf.name, graph2use='colored', format='pdf')  # 'hierarchical')
+    # wf.write_graph(dotfilename=wf.name, graph2use='orig', format='pdf')
+    # wf.write_graph(dotfilename=wf.name, graph2use='flat', format='pdf')
 
     if plugin_name == 'CondorDAGMan':
         wf.run(plugin=plugin_name)
