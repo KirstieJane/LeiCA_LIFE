@@ -1,17 +1,3 @@
-import os
-
-import numpy as np
-import nibabel as nb
-import pandas as pd
-import pickle
-import sklearn
-from nilearn import plotting
-import pylab as plt
-from matplotlib.backends.backend_pdf import PdfPages
-
-
-from learning.helpers import _merge_nii, _merge_matrix, _merge_fs, _merge_fs_tab, _vectorize_nii, _vectorize_matrix, \
-    _vectorize_fs, _vectorize_fs_tab, _vectorize_behav_df
 
 
 def aggregate_data(file_list, df_file, df_col_names):
@@ -23,6 +9,11 @@ def aggregate_data(file_list, df_file, df_col_names):
     special case behav files (detected by df_col_names not None):
     here the data already is aggregated; just pipe through (save)
     '''
+    import os
+    import nibabel as nb
+    import numpy as np
+    from learning.helpers import _merge_nii, _merge_matrix, _merge_fs, _merge_fs_tab
+
     out_filename = os.path.basename(file_list[0])
     if file_list[0].endswith('.nii.gz'):  # 3d nii files
         merged_file = _merge_nii(file_list, out_filename)
@@ -50,6 +41,11 @@ def aggregate_data(file_list, df_file, df_col_names):
 
 def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal,
                    use_fishers_z, df_col_names):
+    import os, pickle
+    import numpy as np
+    from nilearn.input_data import NiftiMasker, NiftiLabelsMasker
+    from learning.helpers import _vectorize_nii, _vectorize_matrix, _vectorize_fs, _vectorize_fs_tab, _vectorize_behav_df
+
     masker = None
 
     if in_data_file.endswith('.nii.gz'):  # 3d nii files
@@ -91,6 +87,9 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
 
 
 def pred_real_scatter(y_test, y_test_predicted, title_str, in_data_name):
+    import os
+    import pylab as plt
+    from matplotlib.backends.backend_pdf import PdfPages
     plt.figure()
     plt.scatter(y_test, y_test_predicted)
     plt.plot([10, 80], [10, 80], 'k')
@@ -108,6 +107,11 @@ def pred_real_scatter(y_test, y_test_predicted, title_str, in_data_name):
 
 
 def plot_brain_age(y_test, y_test_predicted, in_data_name):
+    import os
+    import pylab as plt
+    import numpy as np
+    from matplotlib.backends.backend_pdf import PdfPages
+
     brain_age = y_test_predicted - y_test
     title_str = 'mean brain age: %s\nr = %s' % (brain_age.mean(), np.corrcoef(brain_age, y_test)[0, 1])
     plt.figure()
@@ -140,8 +144,11 @@ def backproject_weights_to_full_space(trained_model_file):
     '''
     Takes a vector of weights and fills NaNs for all the features that have been eliminated during preprocessing
     '''
-    ADD_CONSTANT = 1000
+    import pickle
+    import numpy as np
+    import sklearn
 
+    ADD_CONSTANT = 1000
     trained_model = pickle.load(open(trained_model_file))
 
     if isinstance(trained_model, sklearn.grid_search.GridSearchCV):  # necessary because gs object is set up diffrently
@@ -192,6 +199,7 @@ def vector_to_matrix(v, use_diagonal=False):
     vector_size = matrix_size*(matrix_size-1)*.5
     matrix diagonal is set to 0
     '''
+    import numpy as np
     vector_size = v.shape[0]
     if use_diagonal:
         diag_add = -1
@@ -216,6 +224,7 @@ def matrix_to_vector(m):
     '''
     returns lower triangle of 2D matrix (without diagonale) as vector
     '''
+    import numpy as np
     i = np.ones_like(m).astype(np.bool)
     tril_ind = np.tril(i, -1)
     v = m[tril_ind]
@@ -226,6 +235,7 @@ def test_vector_to_matrix():
     '''
     tests vector_to_matrix() and matrix_to_vector()
     '''
+    import numpy as np
     # simulate data
     matrix_size = 200
     m_in = np.random.randn(matrix_size, matrix_size)
@@ -241,6 +251,13 @@ def save_weights(data, data_type, save_template, outfile_name, masker=None):
     '''
     saves weights as nii or other file
     '''
+    import nibabel as nb
+    import numpy as np
+    import pandas as pd
+    import os
+    from nilearn import plotting
+    import pylab as plt
+
     weights_file_str = '_weights'
     render_file_str = '_rendering'
     outfile_render = os.path.abspath(outfile_name + render_file_str + '.pdf')

@@ -1,4 +1,3 @@
-
 def calc_variability(in_file):
     '''
     input: preprocessed time series
@@ -17,7 +16,6 @@ def calc_variability(in_file):
 
     img = nb.load(in_file)
     ts = img.get_data()
-
 
     out_file_std = os.path.abspath('ts_std.nii.gz')
     ts_std = np.std(ts, 3)
@@ -67,7 +65,6 @@ def extract_parcellation_time_series(in_data, parcellation_name, parcellations_d
     return parcellation_time_series, parcellation_time_series_file, masker_file
 
 
-
 def calculate_connectivity_matrix(in_data, extraction_method):
     '''
     after extract_parcellation_time_series() connectivity matrices are calculated via specified extraction method
@@ -100,3 +97,21 @@ def calculate_connectivity_matrix(in_data, extraction_method):
 
     return matrix, matrix_file
 
+
+
+def get_good_trs(fd_file, fd_thresh):
+    import os, numpy as np
+
+    fd = np.genfromtxt(fd_file)
+    good_trs = (fd <= fd_thresh)
+    fd_scrubbed = fd[good_trs]
+    fd_scrubbed_file = os.path.abspath(os.path.basename(fd_file) + '_scrubbed_%.1f' % fd_thresh)
+    np.savetxt(fd_scrubbed_file, fd_scrubbed)
+    return good_trs, fd_scrubbed_file
+
+def parcellation_time_series_scrubbing(parcellation_time_series_file, good_trs):
+    import os, numpy as np
+
+    parcellation_time_series = np.load(parcellation_time_series_file)
+    parcellation_time_series_scrubbed = parcellation_time_series[good_trs, ...]
+    return parcellation_time_series_scrubbed

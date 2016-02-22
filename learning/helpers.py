@@ -1,10 +1,3 @@
-import os
-import pickle
-import nibabel as nb
-from nipype import Node
-from nipype.interfaces import fsl as fsl
-import numpy as np
-import pandas as pd
 
 
 # MERGE DATA HELPER FUNCTIONS
@@ -13,6 +6,9 @@ def _merge_nii(file_list, out_filename):
     merges list of nii over subjects
     '''
     # For long file lists, nipype throws an error if not split
+    from nipype.interfaces import fsl as fsl
+    from nipype import Node
+    import os
     if len(file_list) < 1300:
         merge = Node(fsl.Merge(dimension='t'), name='merge')
         merge.base_dir = os.getcwd()
@@ -44,6 +40,11 @@ def _merge_matrix(file_list, out_filename):
     '''
     merges list of pickled matrices so that -> matrix[subject,x,y]
     '''
+    import numpy as np
+    import pandas as pd
+    import pickle
+    import os
+
     out_data = None
     for matrix_file in file_list:
         with open(matrix_file, 'r') as f:
@@ -67,6 +68,9 @@ def _merge_fs(file_list, out_filename):
     '''
     merges list of fs surfs
     '''
+    import numpy as np
+    import nibabel as nb
+    import os
     out_data = None
 
     for fs_file in file_list:
@@ -87,6 +91,9 @@ def _merge_fs_tab(file_list, out_filename):
     '''
     merges list of fs_tab textfiles
     '''
+    import numpy as np
+    import pandas as pd
+    import os
     out_data = None
     for i, tab_file in enumerate(file_list):
         df_single = pd.read_csv(tab_file, index_col=0, delimiter='\t')
@@ -104,6 +111,9 @@ def _merge_fs_tab(file_list, out_filename):
 # VECTORIZE DATA helper functions
 
 def _vectorize_nii(in_data_file, mask_file, parcellation_path, fwhm):
+    import numpy as np
+    import pandas as pd
+    import os
     from nilearn.input_data import NiftiMasker, NiftiLabelsMasker
 
     if parcellation_path is None:
@@ -117,11 +127,16 @@ def _vectorize_nii(in_data_file, mask_file, parcellation_path, fwhm):
 
 
 def _vectorize_matrix(in_data_file, matrix_name, use_diagonal=False):
+    import numpy as np
+    import pickle
+    import os
     def _lower_tria_vector(m, use_diagonal=False):
         '''
         use_diagonal=False: returns lower triangle of matrix (without diagonale) as vector
         use_diagonal=True: returns lower triangle of matrix (with diagonale) as vector; e.g. for downsampled matrices
-        matrix dims are x,y,subject
+        matrix dims are
+            x,y,subject for aggregated data
+            or  x,y for single subject data
         '''
         i = np.ones_like(m).astype(np.bool)
         if use_diagonal:
@@ -129,7 +144,11 @@ def _vectorize_matrix(in_data_file, matrix_name, use_diagonal=False):
         else:
             k = -1
         tril_ind = np.tril(i, k)
-        vectorized_data = m[tril_ind].reshape(m.shape[0], -1)
+
+        if m.ndim == 3: # subjects alredy aggregated
+            vectorized_data = m[tril_ind].reshape(m.shape[0], -1)
+        else: # single subject matrix
+            vectorized_data = m[tril_ind]
         return vectorized_data
 
     # load pickled matrix
@@ -144,17 +163,20 @@ def _vectorize_matrix(in_data_file, matrix_name, use_diagonal=False):
 
 def _vectorize_fs(in_data_file):
     # load fs matrix (is already vectorized)
+    import numpy as np
     vectorized_data = np.load(in_data_file)
     return vectorized_data
 
 
 def _vectorize_fs_tab(in_data_file):
+    import pandas as pd
     df = pd.read_csv(in_data_file, index_col=0)
     vectorized_data = df.values
     return vectorized_data
 
 
 def _vectorize_behav_df(in_data_file, df_col_names):
+    import pandas as pd
     df = pd.read_pickle(in_data_file)
     vectorized_data = df[df_col_names].values
     return vectorized_data
