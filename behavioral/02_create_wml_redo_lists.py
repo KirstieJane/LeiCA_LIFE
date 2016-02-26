@@ -1,14 +1,3 @@
-'''
-Imports and concatenates behav files
-1. Remove duplicate subjects (if 2 MR tps, take second)
-2. Add Cerad (no exclusion)
-3. Add MR diagnostics
-4. Exclude subjects without diagnostics (mri_lesion_num=999999)
-5. Create 'neurol_healthy': subjects without ischemic, hemorraghic, both, traumatic diagnostic (mri_lesion_num 2-5)
-(subjects with diagnostics but without Fazekas are not excluded)
-
-'''
-
 import pandas as pd
 import numpy as np
 import pylab as plt
@@ -16,174 +5,54 @@ import glob, os
 import seaborn as sns
 from collections import OrderedDict
 
-behav_out_folder = '/Users/franzliem/PowerFolders/LIFE/behavioral'
-n = OrderedDict()
+df = pd.read_pickle('/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_behav_n2636.pkl')
+qc = pd.read_pickle('/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_QC_n2557.pkl')
 
+df = df.join(qc, how='right')
 
-def read_life_excel(xls):
-    df = pd.read_excel(xls)
-    df.set_index(df.ix[:, 0], inplace=True)
-    return df
+df_missing = df[df['WML_lesionload'].isnull()]
+df_missing['t1_path'] = ''
+df_missing['flair_path'] = ''
 
+for s in df_missing.index.values:
+    txt_file = '/data/liem-1/LIFE/raw_data/{s}/check/images_used.txt'.format(s=s)
 
-def create_multi_index(df):
-    # creates unique index from sic and study group (pilot, haupt)
-    def get_grp_col(df):
-        import fnmatch
-        for i in df.columns.values:
-            if fnmatch.fnmatch(i.lower(), '*_grp'):
-                return i
-            if fnmatch.fnmatch(i.lower(), '*_gruppe'):
-                return i
+    with open(txt_file) as fi:
+        txt_data = fi.readlines()[0].strip()
 
-    grp_col = get_grp_col(df)
-    assert (grp_col is not None), 'Could not find group column'
-    multi_index = pd.MultiIndex.from_tuples(zip(df.index, df[grp_col]), names=['SIC', 'study'])
-    df.set_index(multi_index, inplace=True)
-    return df
-
-
-# read basic df
-df = read_life_excel('PV0250_R00001.xlsx')[['R00001_PBD_GESCHLECHT', 'R00001_PBD_GEBJAHRMON']]
-df['dob'] = pd.to_datetime(df.R00001_PBD_GEBJAHRMON, format='%Y%m')
-# read MR df
-df_mr_orig = read_life_excel('PV0250_T00197.xlsx')[['MRT_SIC', 'MRT_DATUM', 'MRT_GRUPPE']]
-
-
-
-# for duplicates, take more recent MR date
-df_mr_orig.sort_values(by='MRT_DATUM', inplace=True)
-df_mr_dup = df_mr_orig[df_mr_orig.index.duplicated(keep=False)]
-df_mr = df_mr_orig.drop_duplicates(subset='MRT_SIC', keep='last')
-
-# Deal with special duplicate case: data missing on second time point -> use first
-df_mr.drop('LI00002611', axis=0, inplace=True)
-df_mr.loc['LI00002611'] = df_mr_dup.loc['LI00002611'].ix[0, :]
-
-df = df.join(df_mr, how='outer')
-df['t_days'] = (df.MRT_DATUM - df.MRT_DATUM.min()).dt.days
-
-# calc age and sex
-df['age'] = (df_mr.MRT_DATUM - df.dob).dt.days / 365.25
-df['sex'] = df['R00001_PBD_GESCHLECHT'].replace({1: 'M', 2: 'F'})
-df_all = df.copy()
-df = create_multi_index(df)
-
-
-
-# add CERAD
-cerad_list = glob.glob('*_D000[456]*.xlsx')
-df_cerad_big = None
-for c in cerad_list:
-    df_in = read_life_excel(c)
-    df_in = create_multi_index(df_in)
-    if df_cerad_big is None:
-        df_cerad_big = df_in
+    data_root_path = txt_data.strip()
+    i = glob.glob(os.path.join(data_root_path, 'NIFTI', '*MPRAGE_ADNI_32Ch_*'))
+    if i:
+        t1_path = i[0]
     else:
-        df_cerad_big = df_cerad_big.join(df_in, how='outer')
+        t1_path = np.nan
 
-ren = {'CERAD_TOTAL_CERAD_WL_TOTAL': 'CERAD_LEA_O',
-       'CERAD_WL_LERN_WORTLISTE_TOTAL': 'CERAD_LEA_Y',
-       'CERAD_WL_ABRUF_CERAD_WL_ABRUF': 'CERAD_RECALL_O',
-       'CERAD_WL_AB_WORTLISTE_WL_ABR': 'CERAD_RECALL_Y',
-       'CERAD_WL_ERKENN_CERAD_WL_ERK': 'CERAD_RECOG_O',
-       'CERAD_WL_ERKENN_J_WORTL_WL_ERK': 'CERAD_RECOG_Y'}
-df_cerad_big.rename(columns=ren, inplace=True)
-# nanmean for _Y and _O-> if both are nan: nan; if 1 is nan: pick other one; if none is nan: mean
-df_cerad_big['CERAD_LEA'] = df_cerad_big[['CERAD_LEA_O', 'CERAD_LEA_Y']].apply(np.nanmean, axis=1)
-df_cerad_big['CERAD_RECALL'] = df_cerad_big[['CERAD_RECALL_O', 'CERAD_RECALL_Y']].apply(np.nanmean, axis=1)
-df_cerad_big['CERAD_RECOG'] = df_cerad_big[['CERAD_RECOG_O', 'CERAD_RECOG_Y']].apply(np.nanmean, axis=1)
-df_cerad = df_cerad_big[['CERAD_LEA', 'CERAD_RECALL', 'CERAD_RECOG']]
+    i = glob.glob(os.path.join(data_root_path, 'NIFTI', '*t2_spc_da-fl_irprep_sag_p2_iso_395.nii.gz'))
+    if i:
+        flair_path = i[0]
+    else:
+        flair_path = np.nan
+    print t1_path
+    print flair_path
+    df_missing.loc[s, ['t1_path', 'flair_path']] = [t1_path, flair_path]  #
 
-df = df.join(df_cerad, how='left')
+fold_size = 100
+n_folds = len(df_missing) / 100 + 1
+for f in range(n_folds):
+    ind_start = f * fold_size
+    ind_end = ind_start + fold_size
+    if ind_end > len(df_missing):
+        ind_end = len(df_missing)
 
-
-# add TMT
-df_tmt = read_life_excel('PV0250_T00041.xlsx')
-df_tmt.dropna(axis=0, subset=['TMT_TIMEA', 'TMT_ERRORSA', 'TMT_TIMEB', 'TMT_ERRORSB'], inplace=True)
-df_tmt = create_multi_index(df_tmt)
-df_tmt['TMT_task_switching'] = (df_tmt['TMT_TIMEB'] - df_tmt['TMT_TIMEA']) / df_tmt['TMT_TIMEA']
-df = df.join(df_tmt[['TMT_task_switching', 'TMT_TIMEA', 'TMT_TIMEB']], how='left')
-
-
-# add VF
-df_vf_1 = read_life_excel('PV0250_D00046.xlsx')
-df_vf_1 = create_multi_index(df_vf_1)
-df_vf_2 = read_life_excel('PV0250_D00061.xlsx')
-df_vf_2 = create_multi_index(df_vf_2)
-df_vf = df_vf_1.join(df_vf_2, how="outer")
-df_vf.rename(columns={'CERAD_S_SUM_CERAD_S': 'VF_phon', 'SUM_CERADVF_SUM_CERADVF': 'VF_sem'}, inplace=True)
-
-df = df.join(df_vf[['VF_phon', 'VF_sem']], how='left')
+    print ind_start, ind_end
+    t1 = df_missing.iloc[ind_start:ind_end]['t1_path'].values
+    np.savetxt('/home/raid2/liem/data/LIFE//wml_redo/list_t1_%s_%s.txt' % (ind_start, ind_end), t1, fmt="%s")
+    flair = df_missing.iloc[ind_start:ind_end]['flair_path'].values
+    np.savetxt('/home/raid2/liem/data/LIFE//wml_redo/list_flair_%s_%s.txt' % (ind_start, ind_end), flair, fmt="%s")
 
 
-
-# remove duplicates and set index back to sic
-df.set_index(df.MRT_SIC, inplace=True)
-df.drop(labels=['R00001_PBD_GEBJAHRMON', 'dob', 'R00001_PBD_GESCHLECHT', 'MRT_SIC'], axis=1, inplace=True)
-n['pre befund'] = len(df)
-
-
-# add diagnostics
-df_befund = pd.read_csv('MRT_befund_daten.csv', na_values=999999)
-df_befund.dropna(axis=0, subset=['mri_lesion_num'], inplace=True)
-df_befund.rename(columns={'\xef\xbb\xbfSIC': 'SIC'}, inplace=True)
-df_befund.set_index('SIC', inplace=True)
-# Frauke: mri_lesion_num. Du solltest 2-5 und 999999 ausschließen, 0 und 1 sind ok
-#  ischemic, hemorraghic, both, traumatic (coded as 2-5), +missing (999999) lesions
-df_befund['neurol_healthy'] = False
-df_befund.loc[df_befund['mri_lesion_num'] <= 2, ['neurol_healthy']] = True
-df_befund['MRT_BefundFazekas'] = pd.to_numeric(df_befund.MRT_BefundFazekas, 'coerce')
-
-df = df.join(df_befund[['MRT_BefundFazekas', 'mri_lesion_num', 'mri_tumors_num', 'neurol_healthy']], how='inner')
-# df.dropna(axis=0, subset=['MRT_BefundFazekas'], inplace=True)
-
-# add lesion volume
-# WML_lesionload (gen_lesionload) ist der ausgegebene Wert von LesionTOADS
-# WML_lesionload_norm_tiv (gen_n) ist Läsionsvolumen normalisiert mit TIV
-# WML_lesionload_norm_tiv_ln (gen_n_ln) ist das transformierte Läsionsvolumen, damit es normalverteilt ist (falls du mit parametrischen Tests arbeitest)
-
-df_lesvol = pd.read_csv('lesions_franz.csv', )
-df_lesvol.set_index('SIC', inplace=True)
-df_lesvol = df_lesvol.ix[:,1:]
-ren = {'gen_lesionload': 'WML_lesionload', 'gen_n': 'WML_lesionload_norm_tiv', 'gen_n_ln': 'WML_lesionload_norm_tiv_ln'}
-df_lesvol.rename(columns=ren, inplace=True)
-
-df = df.join(df_lesvol, how='left')
-
-n['post befund'] = len(df)
-n['neurol healthy'] = len(df.query('neurol_healthy'))
-
-print('N SUBJECTS')
-print(n)
-
-
-
-
-
-df.to_pickle(os.path.join(behav_out_folder, 'LIFE_subjects_behav_n%s.pkl' % str(len(df))))
-df.to_excel(os.path.join(behav_out_folder, 'LIFE_subjects_behav_n%s.xlsx' % str(len(df))))
-df.to_pickle('../LIFE_subjects_behav_n%s.pkl' % str(len(df)))
-df.to_excel('../LIFE_subjects_behav_n%s.xlsx' % str(len(df)))
-
-
-df_excluded = df_all.drop(labels=df.index, axis=0)
-
-
-
-
-# plt.figure()
-# sns.regplot('t_days', 'age', data=df, fit_reg=False);
-# plt.savefig('../LIFE_sampling.pdf')
+# df.to_pickle(os.path.join(behav_out_folder, 'LIFE_subjects_behav_n%s.pkl' % str(len(df))))
+df_missing.to_excel(os.path.join('/home/raid2/liem/data/LIFE/behavioral/', 'wml_missing.xlsx'))
+# df.to_pickle('../LIFE_subjects_behav_n%s.pkl' % str(len(df)))
+# df.to_excel('../LIFE_subjects_behav_n%s.xlsx' % str(len(df)))
 #
-# df_old = pd.read_pickle('../120_all_available_subjects_n2559.pkl')[[u'mean_FD_P', u'max_FD_P']]
-#
-# df = df.join(df_old, how='right')
-#
-# corcol=['age', 'm', 'mean_FD_P']
-# df_ = df[corcol]
-# from partial_corr import partial_corr
-# df_.corr()
-#
-# df_.dropna(inplace=True)
-# p = pd.DataFrame(partial_corr(df_), index=corcol, columns=corcol)
