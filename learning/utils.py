@@ -1,31 +1,5 @@
-def aggregate_data(file_list):
-    '''
-    tries to guess data type.
-    loads data an concatenates it.
-    returns merged file path
-
-    special case behav files (detected by df_col_names not None):
-    here the data already is aggregated; just pipe through (save)
-    '''
-    import os
-    import nibabel as nb
-    import numpy as np
-
-    out_data = None
-    for file_ss in file_list:
-        in_data_ss = np.atleast_2d(np.load(file_ss))
-        if out_data is None:
-            out_data = in_data_ss
-        else:
-            out_data = np.concatenate((out_data, in_data_ss))
-
-    merged_file = os.path.abspath('vectorized_aggregated_data.npy')
-    np.save(merged_file, out_data)
-    return merged_file
-
-
-def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal,
-                   use_fishers_z, df_file, df_col_names):
+def vectorize_ss(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal, use_fishers_z, df_file,
+                 df_col_names):
     import os, pickle
     import numpy as np
     from learning.vectorize_helpers import _vectorize_nii, _vectorize_matrix, _vectorize_fs, _vectorize_fs_tab, \
@@ -53,9 +27,9 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
 
     elif df_col_names:  # X from df behav
         # subject is inputted via in_data_file
-        vectorized_data = _vectorize_behav_df(df_file=df_file, subject=in_data_file, df_col_names=df_col_names)
+        vectorized_data, save_template = _vectorize_behav_df(df_file=df_file, subject=in_data_file,
+                                                             df_col_names=df_col_names)
         data_type = 'behav'
-        save_template = df_file[df_col_names]
 
     else:
         raise Exception('Cannot guess type from filename: %s' % in_data_file)
@@ -70,10 +44,114 @@ def vectorize_data(in_data_file, mask_file, matrix_name, parcellation_path, fwhm
         vectorized_data = r_to_z(vectorized_data)
 
     vectorized_data = np.atleast_2d(vectorized_data)
+    return vectorized_data, data_type, masker, save_template
 
-    vectorized_data_file = os.path.join(os.getcwd(), 'vectorized_data.npy')
-    np.save(vectorized_data_file, vectorized_data)
-    return vectorized_data_file, data_type, masker, save_template
+
+def vectorize_and_aggregate(in_data_file_list, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal,
+                            use_fishers_z, df_file, df_col_names):
+    import os, pickle
+    import numpy as np
+    from learning.utils import vectorize_ss
+
+    # get an example of the data:
+    vectorized_data, data_type, masker, save_template = vectorize_ss(in_data_file_list[0], mask_file, matrix_name,
+                                                                     parcellation_path, fwhm, use_diagonal,
+                                                                     use_fishers_z, df_file,
+                                                                     df_col_names)
+    vectorized_data = np.zeros((len(in_data_file_list), vectorized_data.shape[1]))
+    vectorized_data.fill(np.nan)
+
+    for i, in_data_file_ss in enumerate(in_data_file_list):
+        vectorized_data[i, :], _, _, _ = vectorize_ss(in_data_file_ss, mask_file, matrix_name, parcellation_path, fwhm,
+                                                      use_diagonal, use_fishers_z, df_file, df_col_names)
+
+    vectorized_aggregated_file = os.path.abspath('vectorized_aggregated_data.npy')
+    np.save(vectorized_aggregated_file, vectorized_data)
+
+    unimodal_backprojection_info = {'data_type': data_type,
+                                   'masker': masker,
+                                   'save_template': save_template}
+    unimodal_backprojection_info_file = os.path.abspath('unimodal_backprojection_info.pkl')
+    pickle.dump(unimodal_backprojection_info, open(unimodal_backprojection_info_file, 'w'))
+    return vectorized_aggregated_file, unimodal_backprojection_info_file
+
+
+def aggregate_data(file_list):
+    '''
+    tries to guess data type.
+    loads data an concatenates it.
+    returns merged file path
+
+    special case behav files (detected by df_col_names not None):
+    here the data already is aggregated; just pipe through (save)
+    '''
+    import os
+    import nibabel as nb
+    import numpy as np
+
+    out_data = None
+    for file_ss in file_list:
+        in_data_ss = np.atleast_2d(np.load(file_ss))
+        if out_data is None:
+            out_data = in_data_ss
+        else:
+            out_data = np.concatenate((out_data, in_data_ss))
+
+    merged_file = os.path.abspath('vectorized_aggregated_data.npy')
+    np.save(merged_file, out_data)
+    return merged_file
+
+
+#
+# def vectorize_data_old(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, use_diagonal,
+#                    use_fishers_z, df_file, df_col_names):
+#     import os, pickle
+#     import numpy as np
+#     from learning.vectorize_helpers import _vectorize_nii, _vectorize_matrix, _vectorize_fs, _vectorize_fs_tab, \
+#         _vectorize_behav_df
+#
+#     save_template = in_data_file
+#
+#     masker = None
+#     if in_data_file.endswith('.nii.gz'):  # 3d nii files
+#         vectorized_data, masker = _vectorize_nii(in_data_file, mask_file, parcellation_path, fwhm)
+#         data_type = '3dnii'
+#
+#     elif in_data_file.endswith('.pkl') & (df_col_names is None):  # pickled matrix files
+#         vectorized_data = _vectorize_matrix(in_data_file, matrix_name, use_diagonal)
+#         data_type = 'matrix'
+#
+#     elif in_data_file.endswith('.mgz'):  # freesurfer: already vetorized
+#         vectorized_data = _vectorize_fs(in_data_file)
+#         data_type = 'fs_cortical'
+#
+#     elif os.path.basename(in_data_file).startswith('aseg') | os.path.basename(in_data_file).startswith(
+#             'aparc'):  # aseg: just export values from df
+#         vectorized_data = _vectorize_fs_tab(in_data_file)
+#         data_type = 'fs_tab'
+#
+#     elif df_col_names:  # X from df behav
+#         # subject is inputted via in_data_file
+#         vectorized_data, save_template = _vectorize_behav_df(df_file=df_file, subject=in_data_file, df_col_names=df_col_names)
+#         data_type = 'behav'
+#
+#     else:
+#         raise Exception('Cannot guess type from filename: %s' % in_data_file)
+#
+#     def r_to_z(r):
+#         r = np.atleast_1d(r)
+#         r[r == 1] = 1 - 1e-15
+#         r[r == -1] = -1 + 1e-15
+#         return np.arctanh(r)
+#
+#     if use_fishers_z:
+#         vectorized_data = r_to_z(vectorized_data)
+#
+#     vectorized_data = np.atleast_2d(vectorized_data)
+#
+#     vectorized_data_file = os.path.join(os.getcwd(), 'vectorized_data.npy')
+#     np.save(vectorized_data_file, vectorized_data)
+#     return vectorized_data_file, data_type, masker, save_template
 
 
 def pred_real_scatter(y_test, y_test_predicted, title_str, in_data_name):

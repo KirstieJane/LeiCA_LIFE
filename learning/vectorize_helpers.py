@@ -70,6 +70,10 @@ def _vectorize_fs_tab(in_data_file):
 
 def _vectorize_behav_df(df_file, subject, df_col_names):
     import pandas as pd
+    import os
     df = pd.read_pickle(df_file)
     vectorized_data = df.loc[subject][df_col_names].values
-    return vectorized_data
+
+    save_template = os.path.abspath('save_template.pkl')
+    df[df_col_names].to_pickle(save_template)
+    return vectorized_data, save_template
