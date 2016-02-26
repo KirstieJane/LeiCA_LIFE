@@ -107,9 +107,13 @@ df = df.join(df_tmt[['TMT_task_switching', 'TMT_TIMEA', 'TMT_TIMEB']], how='left
 
 
 # add VF
-df_vf = read_life_excel('PV0250_D00046.xlsx').join(read_life_excel('PV0250_D00061.xlsx'), how='outer')
+df_vf_1 = read_life_excel('PV0250_D00046.xlsx')
+df_vf_1 = create_multi_index(df_vf_1)
+df_vf_2 = read_life_excel('PV0250_D00061.xlsx')
+df_vf_2 = create_multi_index(df_vf_2)
+df_vf = df_vf_1.join(df_vf_2, how="outer")
 df_vf.rename(columns={'CERAD_S_SUM_CERAD_S': 'VF_phon', 'SUM_CERADVF_SUM_CERADVF': 'VF_sem'}, inplace=True)
-df_vf = create_multi_index(df_vf)
+
 df = df.join(df_vf[['VF_phon', 'VF_sem']], how='left')
 
 
