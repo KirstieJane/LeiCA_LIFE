@@ -17,8 +17,13 @@ import seaborn as sns
 from collections import OrderedDict
 
 behav_out_folder = '/Users/franzliem/PowerFolders/LIFE/behavioral'
+os.chdir('/Users/franzliem/Dropbox/LeiCA/LIFE/behavioral/data')
 n = OrderedDict()
 
+prov = pd.DataFrame([], columns=['from_file'])
+def add_prov(df, f_name):
+    for c in df.columns.values:
+        prov.loc[c] = f_name
 
 def read_life_excel(xls):
     df = pd.read_excel(xls)
@@ -68,8 +73,7 @@ df['age'] = (df_mr.MRT_DATUM - df.dob).dt.days / 365.25
 df['sex'] = df['R00001_PBD_GESCHLECHT'].replace({1: 'M', 2: 'F'})
 df_all = df.copy()
 df = create_multi_index(df)
-
-
+df_big = df.copy()
 
 # add CERAD
 cerad_list = glob.glob('*_D000[456]*.xlsx')
@@ -81,6 +85,7 @@ for c in cerad_list:
         df_cerad_big = df_in
     else:
         df_cerad_big = df_cerad_big.join(df_in, how='outer')
+    add_prov(df_in, c)
 
 ren = {'CERAD_TOTAL_CERAD_WL_TOTAL': 'CERAD_LEA_O',
        'CERAD_WL_LERN_WORTLISTE_TOTAL': 'CERAD_LEA_Y',
@@ -96,24 +101,28 @@ df_cerad_big['CERAD_RECOG'] = df_cerad_big[['CERAD_RECOG_O', 'CERAD_RECOG_Y']].a
 df_cerad = df_cerad_big[['CERAD_LEA', 'CERAD_RECALL', 'CERAD_RECOG']]
 
 df = df.join(df_cerad, how='left')
-
+df_big = df_big.join(df_cerad_big, how='left')
 
 # add TMT
 df_tmt = read_life_excel('PV0250_T00041.xlsx')
-df_tmt.dropna(axis=0, subset=['TMT_TIMEA', 'TMT_ERRORSA', 'TMT_TIMEB', 'TMT_ERRORSB'], inplace=True)
+add_prov(df_tmt, 'PV0250_T00041.xlsx')
 df_tmt = create_multi_index(df_tmt)
+df_tmt.dropna(axis=0, subset=['TMT_TIMEA', 'TMT_ERRORSA', 'TMT_TIMEB', 'TMT_ERRORSB'], inplace=True)
+df_big = df_big.join(df_tmt, how='left')
 df_tmt['TMT_task_switching'] = (df_tmt['TMT_TIMEB'] - df_tmt['TMT_TIMEA']) / df_tmt['TMT_TIMEA']
 df = df.join(df_tmt[['TMT_task_switching', 'TMT_TIMEA', 'TMT_TIMEB']], how='left')
 
 
 # add VF
 df_vf_1 = read_life_excel('PV0250_D00046.xlsx')
+add_prov(df_vf_1, 'PV0250_D00046.xlsx')
 df_vf_1 = create_multi_index(df_vf_1)
 df_vf_2 = read_life_excel('PV0250_D00061.xlsx')
+add_prov(df_vf_2, 'PV0250_D00061.xlsx')
 df_vf_2 = create_multi_index(df_vf_2)
 df_vf = df_vf_1.join(df_vf_2, how="outer")
 df_vf.rename(columns={'CERAD_S_SUM_CERAD_S': 'VF_phon', 'SUM_CERADVF_SUM_CERADVF': 'VF_sem'}, inplace=True)
-
+df_big = df_big.join(df_vf, how='left', lsuffix='1', rsuffix='2')
 df = df.join(df_vf[['VF_phon', 'VF_sem']], how='left')
 
 
@@ -122,7 +131,6 @@ df = df.join(df_vf[['VF_phon', 'VF_sem']], how='left')
 df.set_index(df.MRT_SIC, inplace=True)
 df.drop(labels=['R00001_PBD_GEBJAHRMON', 'dob', 'R00001_PBD_GESCHLECHT', 'MRT_SIC'], axis=1, inplace=True)
 n['pre befund'] = len(df)
-
 
 # add diagnostics
 df_befund = pd.read_csv('MRT_befund_daten.csv', na_values=999999)
@@ -145,7 +153,7 @@ df = df.join(df_befund[['MRT_BefundFazekas', 'mri_lesion_num', 'mri_tumors_num',
 
 df_lesvol = pd.read_csv('lesions_franz.csv', )
 df_lesvol.set_index('SIC', inplace=True)
-df_lesvol = df_lesvol.ix[:,1:]
+df_lesvol = df_lesvol.ix[:, 1:]
 ren = {'gen_lesionload': 'WML_lesionload', 'gen_n': 'WML_lesionload_norm_tiv', 'gen_n_ln': 'WML_lesionload_norm_tiv_ln'}
 df_lesvol.rename(columns=ren, inplace=True)
 
@@ -158,13 +166,26 @@ print('N SUBJECTS')
 print(n)
 
 
+# add more to big
+tests = ['PV0250_D00030.xlsx', 'PV0250_T00041.xlsx', 'PV0250_T00043.xlsx', 'PV0250_T00044.xlsx', 'PV0250_T00083.xlsx',
+         'PV0250_T00084.xlsx']
+for f in tests:
+    df_in = read_life_excel(f)
+    df_in = create_multi_index(df_in)
+    add_prov(df_in, f)
+    df_big = df_big.join(df_in, how='left', lsuffix='1', rsuffix='2')
 
+df_big.set_index(df_big.MRT_SIC, inplace=True)
+df_big.drop(labels=['R00001_PBD_GEBJAHRMON', 'dob', 'R00001_PBD_GESCHLECHT', 'MRT_SIC'], axis=1, inplace=True)
 
 
 df.to_pickle(os.path.join(behav_out_folder, 'LIFE_subjects_behav_n%s.pkl' % str(len(df))))
 df.to_excel(os.path.join(behav_out_folder, 'LIFE_subjects_behav_n%s.xlsx' % str(len(df))))
-df.to_pickle('../LIFE_subjects_behav_n%s.pkl' % str(len(df)))
-df.to_excel('../LIFE_subjects_behav_n%s.xlsx' % str(len(df)))
+
+df_big.to_excel(os.path.join(behav_out_folder, 'LIFE_subjects_behav_n%s_big.xlsx' % str(len(df_big))))
+prov.to_excel(os.path.join(behav_out_folder,'LIFE_subjects_behav_n%s_big_prov.xlsx' % str(len(df_big))))
+# df.to_pickle('../LIFE_subjects_behav_n%s.pkl' % str(len(df)))
+# df.to_excel('../LIFE_subjects_behav_n%s.xlsx' % str(len(df)))
 
 
 df_excluded = df_all.drop(labels=df.index, axis=0)
