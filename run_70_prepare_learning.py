@@ -15,8 +15,8 @@ ds_dir = os.path.join(ds_root_path, 'learning_out')
 
 use_n_procs = 1
 plugin_name = 'MultiProc'
-
-
+#fixme
+#in_data_name_list = [['msdl_abide_BP']]
 
 learning_prepare_data_wf(working_dir=working_dir,
                          ds_dir=ds_dir,
