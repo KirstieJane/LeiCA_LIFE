@@ -13,7 +13,7 @@ subjects_list_folder = '/home/raid2/liem/data/LIFE/behavioral'
 
 subject_file = '/scr/adenauer2/Franz/LIFE16/LIFE16_preprocessed_subjects_list_n2557.txt'
 
-behav_file = '/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_behav_n2648.pkl'
+behav_file = '/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_behav_n2636.pkl'
 qc_file = '/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_QC_n2557.pkl'
 
 subjects_list = load_subjects_list(subject_file)
@@ -40,7 +40,6 @@ craddock_788_path = os.path.join(template_dir,
                                  'parcellations/craddock_2012/scorr_mean_single_resolution/scorr_mean_parc_n_43_k_788_rois.nii.gz')
 
 data_lookup_dict = {}
-# fixme add mask name
 
 metrics = {'alff': 'alff/alff.nii.gz',
            'falff': 'alff/falff.nii.gz',
@@ -48,7 +47,12 @@ metrics = {'alff': 'alff/alff.nii.gz',
            'falff_z': 'alff_z/falff_zstd.nii.gz',
            'reho': 'reho/ReHo.nii.gz',
            'variability_std': 'variability/ts_std.nii.gz',
-           'variability_std_z': 'variability/ts_std_zstd.nii.gz'}
+           'variability_std_z': 'variability_z/ts_std_zstd.nii.gz',
+           #
+           'alff_gm_wm_z': 'alff_gm_wm_z/falff_zstd.nii.gz',
+           'alff_gm_wm_z': 'alff_gm_wm_z/alff_zstd.nii.gz',
+           'variability_gm_wm_z': 'variability_gm_wm_z/ts_std_zstd.nii.gz',
+           }
 
 masks = ['GM', 'WM', 'GM_WM', 'brain_mask']
 resolutions = [3, 4, 8]
@@ -93,6 +97,9 @@ data_lookup_dict['craddock_205_noBP'] = {'matrix_name': 'correlation', 'use_fish
 data_lookup_dict['craddock_205_BP'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
                                        'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
                                                                 'con_mat/matrix/bp_0.01.0.1/craddock_205/matrix.pkl')}
+data_lookup_dict['craddock_205_BP_scr05'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
+                                       'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                                'con_mat/matrix_scrubbed_0_5/bp_0.01.0.1/craddock_205/matrix.pkl')}
 
 data_lookup_dict['craddock_788_noBP'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
                                          'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
@@ -100,6 +107,10 @@ data_lookup_dict['craddock_788_noBP'] = {'matrix_name': 'correlation', 'use_fish
 data_lookup_dict['craddock_788_BP'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
                                        'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
                                                                 'con_mat/matrix/bp_0.01.0.1/craddock_788/matrix.pkl')}
+data_lookup_dict['craddock_788_BP_scr05'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
+                                         'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                                  'con_mat/matrix_scrubbed_0_5/bp_0.01.0.1/craddock_788/matrix.pkl')}
+
 data_lookup_dict['gordon_noBP'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
                                    'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
                                                             'con_mat/matrix/bp_None.None/gordon/matrix.pkl')}
@@ -107,10 +118,22 @@ data_lookup_dict['gordon_BP'] = {'matrix_name': 'correlation', 'use_fishers_z': 
                                  'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
                                                           'con_mat/matrix/bp_0.01.0.1/gordon/matrix.pkl')}
 
+data_lookup_dict['gordon_BP_scr05'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
+                                 'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                          'con_mat/matrix_scrubbed_0_5/bp_0.01.0.1/gordon/matrix.pkl')}
+
 data_lookup_dict['gordon_BP_ds'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
                                     'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
                                                              'con_mat/matrix/bp_0.01.0.1/gordon/matrix_downsampled.pkl'),
                                     'use_diagonal': True}
+
+# msdl abide
+data_lookup_dict['msdl_abide_BP'] = {'matrix_name': 'correlation',
+                                  'use_fishers_z': True,
+                                    'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                             'con_mat/matrix/bp_0.01.0.1/msdl_abide/matrix.pkl'),
+                                    'use_diagonal': True}
+
 
 # BEHAV
 
