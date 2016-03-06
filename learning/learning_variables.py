@@ -49,10 +49,15 @@ in_data_name_list = [
     ['lh_ct_fsav5_sm10', 'rh_ct_fsav5_sm10'], ['lh_csa_fsav5_sm10', 'rh_csa_fsav5_sm10'],
     ['lh_ct_fsav5_sm10', 'rh_ct_fsav5_sm10', 'lh_csa_fsav5_sm10', 'rh_csa_fsav5_sm10', 'aseg'],
     #
-    ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0'], ['lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0'], ['aseg'],
+    ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0'], ['lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0'],
     ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0', 'lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0', 'aseg'],
     ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0', 'lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0', 'aseg', 'craddock_205_BP'],
     ['lh_ct_fsav4_sm0', 'rh_ct_fsav4_sm0', 'lh_csa_fsav4_sm0', 'rh_csa_fsav4_sm0', 'aseg', 'alff_z_GM_WM_4mm_sm0'],
+    #
+    ['lh_ct_fsav3_sm0', 'rh_ct_fsav3_sm0'], ['lh_csa_fsav3_sm0', 'rh_csa_fsav3_sm0'],
+    ['lh_ct_fsav3_sm0', 'rh_ct_fsav3_sm0', 'lh_csa_fsav3_sm0', 'rh_csa_fsav3_sm0', 'aseg'],
+    ['lh_ct_fsav3_sm0', 'rh_ct_fsav3_sm0', 'lh_csa_fsav3_sm0', 'rh_csa_fsav3_sm0', 'aseg', 'craddock_205_BP'],
+    ['lh_ct_fsav3_sm0', 'rh_ct_fsav3_sm0', 'lh_csa_fsav3_sm0', 'rh_csa_fsav3_sm0', 'aseg', 'alff_z_GM_WM_4mm_sm0'],
     #
     ['alff_z_GM_WM_3mm_sm0'], ['falff_z_GM_WM_3mm_sm0'],
     #
@@ -71,7 +76,6 @@ in_data_name_list = [
     # # ['variability_std_z_GM_WM_8mm_sm0'], ['variability_std_z_GM_WM_8mm_sm8'],
     ['craddock_205_BP'], ['craddock_788_BP'], ['gordon_BP'], ['gordon_BP_ds'],
     ['craddock_205_BP_scr05'], ['craddock_788_BP_scr05'], ['gordon_BP_scr05'],
-
     #
     #['lh_ct_fsav4_sm0', 'lh_csa_fsav4_sm0', 'aseg', 'alff_z_GM_WM_3mm_sm0',
     # 'falff_z_GM_WM_3mm_sm0', 'craddock_205_BP']
@@ -83,3 +87,14 @@ in_data_name_list = [
 subjects_selection_crit_names_list = ['bothSexes_neuH']
 
 target_list = ['age']
+
+
+# check for duplicates in in_data_file_list
+seen = []
+for i in in_data_name_list:
+    if i in seen:
+        raise Exception('duplicate in in_data_name_list: %s'%i)
+    else:
+        seen.append(i)
+
+

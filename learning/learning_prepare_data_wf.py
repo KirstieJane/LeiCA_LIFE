@@ -12,7 +12,7 @@ def learning_prepare_data_wf(working_dir,
     from nipype.pipeline.engine import Node, Workflow
     import nipype.interfaces.utility as util
     import nipype.interfaces.io as nio
-    from utils import vectorize_and_aggregate
+    from prepare_data_utils import vectorize_and_aggregate
     from itertools import chain
 
     # ensure in_data_name_list is list of lists
