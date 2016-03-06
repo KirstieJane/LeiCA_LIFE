@@ -2,14 +2,12 @@
 wd ca 170MB/subj
 '''
 import os
-from metrics.calc_metrics import calc_local_metrics
+from metrics.calc_metrics_redo_msdl import calc_local_metrics
 from variables import template_dir, in_data_root_path, subjects_list, \
     metrics_root_path, wd_root_path, selectfiles_templates
 
 working_dir_base = os.path.join(wd_root_path, 'wd_metrics_msdl')
-#fixme
-ds_dir_base = os.path.join(metrics_root_path, 'metrics_test')
-subjects_list = subjects_list[:3]
+ds_dir_base = os.path.join(metrics_root_path, 'metrics')
 brain_mask = '/scr/adenauer2/Franz/LIFE16/Templates/MNI_resampled_brain_mask.nii'
 
 template_dir = os.path.join(template_dir, 'parcellations')

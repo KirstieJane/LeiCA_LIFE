@@ -67,17 +67,17 @@ def calc_local_metrics(brain_mask,
                        name='selectfiles')
     selectfiles.inputs.subject_id = subject_id
 
-    #####################
-    # FIX TR IN HEADER
-    #####################
-    tr_msec = int(TR * 1000)
-    tr_str = '-tr %s' % tr_msec
-
-    fixed_tr_bp = Node(MRIConvert(out_type='niigz', args=tr_str), name='fixed_tr_bp')
-    wf.connect(selectfiles, 'epi_MNI_bp', fixed_tr_bp, 'in_file')
-
-    fixed_tr_fullspectrum = Node(MRIConvert(out_type='niigz', args=tr_str), name='fixed_tr_fullspectrum')
-    wf.connect(selectfiles, 'epi_MNI_fullspectrum', fixed_tr_fullspectrum, 'in_file')
+    # #####################
+    # # FIX TR IN HEADER
+    # #####################
+    # tr_msec = int(TR * 1000)
+    # tr_str = '-tr %s' % tr_msec
+    #
+    # fixed_tr_bp = Node(MRIConvert(out_type='niigz', args=tr_str), name='fixed_tr_bp')
+    # wf.connect(selectfiles, 'epi_MNI_bp', fixed_tr_bp, 'in_file')
+    #
+    # fixed_tr_fullspectrum = Node(MRIConvert(out_type='niigz', args=tr_str), name='fixed_tr_fullspectrum')
+    # wf.connect(selectfiles, 'epi_MNI_fullspectrum', fixed_tr_fullspectrum, 'in_file')
 
     #####################
     # calc FD
@@ -112,7 +112,8 @@ def calc_local_metrics(brain_mask,
     alff.inputs.hp_input.hp = 0.01
     alff.inputs.lp_input.lp = 0.1
     alff.inputs.inputspec.rest_mask = brain_mask
-    wf.connect(fixed_tr_fullspectrum, 'out_file', alff, 'inputspec.rest_res')
+    #wf.connect(fixed_tr_fullspectrum, 'out_file', alff, 'inputspec.rest_res')
+    wf.connect(selectfiles, 'epi_MNI_fullspectrum', alff, 'inputspec.rest_res')
     wf.connect(alff, 'outputspec.alff_img', ds, 'alff.@alff')
     wf.connect(alff, 'outputspec.falff_img', ds, 'alff.@falff')
 
@@ -132,7 +133,8 @@ def calc_local_metrics(brain_mask,
     reho = cpac_reho.create_reho()
     reho.inputs.inputspec.cluster_size = 27
     reho.inputs.inputspec.rest_mask = brain_mask
-    wf.connect(fixed_tr_bp, 'out_file', reho, 'inputspec.rest_res_filt')
+    #wf.connect(fixed_tr_bp, 'out_file', reho, 'inputspec.rest_res_filt')
+    wf.connect(selectfiles, 'epi_MNI_BP', reho, 'inputspec.rest_res_filt')
     wf.connect(reho, 'outputspec.raw_reho_map', ds, 'reho.@reho')
 
 
@@ -141,7 +143,8 @@ def calc_local_metrics(brain_mask,
                                      output_names=['out_file'],
                                      function=calc_metrics_utils.calc_variability),
                        name='variability')
-    wf.connect(fixed_tr_bp, 'out_file', variability, 'in_file')
+    #wf.connect(fixed_tr_bp, 'out_file', variability, 'in_file')
+    wf.connect(selectfiles, 'epi_MNI_BP', variability, 'in_file')
     wf.connect(variability, 'out_file', ds, 'variability.@SD')
 
     variability_z = cpac_utils.get_zscore(input_name='ts_std', wf_name='variability_z')
@@ -165,7 +168,8 @@ def calc_local_metrics(brain_mask,
 
     parcellated_ts.inputs.parcellations_dict = parcellations_dict
     parcellated_ts.inputs.tr = TR
-    wf.connect(fixed_tr_fullspectrum, 'out_file', parcellated_ts, 'in_data')
+    #wf.connect(fixed_tr_fullspectrum, 'out_file', parcellated_ts, 'in_data')
+    wf.connect(selectfiles, 'epi_MNI_fullspectrum', parcellated_ts, 'in_data')
     wf.connect(parcellation_infosource, 'parcellation', parcellated_ts, 'parcellation_name')
     wf.connect(bp_filter_infosource, 'bp_freqs', parcellated_ts, 'bp_freqs')
 
