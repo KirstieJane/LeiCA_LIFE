@@ -186,7 +186,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
 
         out_str = 'r2:  M = %0.7f \t SD = %0.7f\n' % (test_r2, test_r2_std)
         out_str += 'mae: M = %0.7f \t SD = %0.7f\n' % (test_mae, test_mae_std)
-        scatter_file = os.path.abspath('score.txt')
+        scatter_file = os.path.abspath('score_%s.txt' % data_str)
         with open(scatter_file, 'w') as fi:
             fi.write(out_str)
 

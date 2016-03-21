@@ -1,114 +1,214 @@
-__author__ = 'franzliem'
-
 import os, glob
-import pandas as pd
-#from variables import ds_root_path
 import seaborn as sns
 import pylab as plt
 import numpy as np
+import pandas as pd
 
-ds_root_path = '/SCR2/Franz/LeiCA_LIFE'
+ana_stream_root = '*_scaler_standard_rfe_False_strat_False_reg_*_results_error'
+metrics_sel_list = ['*']  # ['lh', 'aseg', 'BP']
+ds_root_path = '/Users/franzliem/PowerFolders/00_Print/tmp'
+fig_path = '/Users/franzliem/PowerFolders/00_Print/figs'
+if not os.path.exists(fig_path):
+    os.mkdir(fig_path)
 
-
-ds_dir = os.path.join(ds_root_path, 'learning_out/pdfs')
+ds_dir = os.path.join(ds_root_path, 'pdfs')
 
 os.chdir(ds_dir)
 df = None
-for reg in ['01_split_results_error', '03_split_regFD_results_error']:
-    df_list = glob.glob(reg + '/*.txt')
-    for df_file in df_list:
-        df_in = pd.read_csv(df_file, index_col=0)
-        if df is None:
-            df = df_in
-        else:
-            df = df.append(df_in)
+dd=[]
+for ana_stream in glob.glob(ana_stream_root):
+    for metrics_sel in metrics_sel_list:
+        df_list = glob.glob(os.path.join(ana_stream, '*' + metrics_sel + '*' + '*.pkl'))
+        for df_file in df_list:
+            dd.append(df_file)
+            df_in = pd.read_pickle(df_file)
+            df_in['ana_stream'] = ana_stream
+            s = df_in.index.values[0].split('__')
+            target, selection = s[0:2]
+            metrics = '__'.join(s[2:])
+            _, _, scaler, _, rfe, _, strat, _, reg, _, _ = ana_stream.split('_')
+            df_in['scaler'] = scaler
+            df_in['rfe'] = rfe
+            df_in['strat'] = strat
+            df_in['reg'] = reg
+            df_in['target'] = target
+            df_in['selection'] = selection
+            df_in['metrics'] = metrics
+            df_in = df_in.replace({'False': False, 'True': True})
+            if df is None:
+                df = df_in
+            else:
+                df = df.append(df_in)
 
-scatter_df = {}
-ana_list = np.unique(df.index.values)
-for reg_path, reg in {'01_split_predicted': False, '03_split_regFD_predicted': True}.items():
-    scatter_df[reg] = {}
-    for a in ana_list:
-        scatter_df[reg][a] = pd.read_pickle(os.path.join(ds_dir, reg_path, a + '_df_predicted.pkl'))
-
-all_ana = set(df.query('MAE_test < 10').index)
-df_all = df.loc[all_ana]
-df_all.ix[:, 'ana'] = df_all.index.values
-multi_index = pd.MultiIndex.from_tuples(zip(df_all['ana'], df_all['FD_res']), names=['ana_id', 'FD_red'])
-df_all.set_index(multi_index, inplace=True)
-df_all.sort_index(inplace=True)
-df_all.to_csv('00_df_all.csv')
-
-if len(all_ana) < 20:
-    plt.figure()
-    ax = sns.barplot(x="MAE_test", y="ana", data=df_all, hue='FD_res')
-    plt.tight_layout()
-    plt.savefig('00_all_bars_MAE.pdf')
-
-    plt.figure()
-    ax = sns.barplot(x="r2_test", y="ana", data=df_all, hue='FD_res')
-    plt.tight_layout()
-    plt.savefig('00_all_bars_r2.pdf')
-
-good_ana = set(df.query('r2_test > .7').index)
-
-df_good = df.loc[good_ana]
-df_good.ix[:, 'ana'] = df_good.index.values
-multi_index = pd.MultiIndex.from_tuples(zip(df_good['ana'], df_good['FD_res']), names=['ana_id', 'FD_red'])
-df_good.set_index(multi_index, inplace=True)
-df_good.sort_index(inplace=True)
-
-def plot_bars(**kwargs):
-
-    def format_ticks(ax):
-        def break_text(s, n):
-            o = []
-            while s:
-                o.append(s[:n])
-                s = s[n:]
-            o = '\n'.join(o)
-            return o
-
-        li = [break_text(l.get_text(), 50) for l in ax.get_yticklabels()]
-        ax.set_yticklabels(li)
-        return ax
+#df = df[df.r2_test > 0]
+#df.r2_test[df.r2_test < 0] = -1
+df['n_metrics'] = df.index.str.count('__') - 1
 
 
-    plt.figure()
-    ax = sns.barplot(**kwargs)
-    ax = format_ticks(ax)
-    try:
-        plt.tight_layout()
-    except:
-        pass
+def break_text(s, n):
+    o = []
+    while s:
+        o.append(s[:n])
+        s = s[n:]
+    o = '\n'.join(o)
+    return o
 
 
-c = sns.color_palette()
-plot_bars(x="MAE_test", y="ana", data=df_good, hue='FD_res')
-plt.savefig('00_best_bars_MAE.pdf')
-
-
-plt.figure()
-plot_bars(x="r2_test", y="ana", data=df_good, hue='FD_res')
-plt.savefig('00_best_bars_r2.pdf')
-
-f, axarr = plt.subplots(len(good_ana), 2, sharex=True, sharey=True, figsize=(15, 35))
-for row, a in enumerate(good_ana):
-    if len(a) > 50:
-        a_str = a[:50] + '\n' + a[50:]
-    else:
-        a_str = a
-
-    ax = axarr[row, 0]
-    sns.regplot(x='age', y='pred_age_test', data=scatter_df[False][a], ax=ax, color=c[0])
-    ax.set_aspect('equal')
-    ax.plot([10, 80], [10, 80], 'k')
-    ax.set_title('%s\nr2 = %3.2f ' % (a_str, df[df.FD_res == False].loc[a]['r2_test']))
-
-    ax = axarr[row, 1]
-    sns.regplot(x='age', y='pred_age_test', data=scatter_df[True][a], ax=ax, color=c[1])
-    ax.set_aspect('equal')
-    ax.plot([10, 80], [10, 80], 'k')
-    ax.set_title('%s\nr2 = %3.2f ' % (a_str, df[df.FD_res == True].loc[a]['r2_test']))
-
+plt.figure(figsize=(11.69, 8.27))
+df.sort_values('n_metrics', inplace=True)
+sns.barplot(x="MAE_test", y="metrics", hue="reg", data=df)
+ax = plt.axes()
+li = [break_text(l.get_text(), 60) for l in ax.get_yticklabels()]
+ax.set_yticklabels(li)
 plt.tight_layout()
-plt.savefig('00_best_scatters.pdf')
+#plt.savefig(os.path.join(fig_path, 'xx.pdf'))
+
+plt.show()
+
+#from scipy.stats import ttest_ind
+#ttest_ind(df.query('rfe==False')['r2_test'], df.query('rfe==True')['r2_test'])
+
+# plt.xticks(rotation=-30)
+
+
+
+
+
+
+#
+#
+# from bokeh.plotting import figure, output_file, show, ColumnDataSource
+# from bokeh.models import HoverTool, BoxZoomTool
+# from bokeh.models import BoxSelectTool, LassoSelectTool, Paragraph
+# from bokeh.plotting import figure, hplot, vplot
+# source = ColumnDataSource(df)
+#
+# scatter_df = {}
+# for i in range(len(df)):
+#     metric = df.iloc[i].name
+#     ana_stream = df.iloc[i]['ana_stream']
+#     scatter_path = '_'.join(ana_stream.split('_')[:-2] + ['predicted'])
+#     scatter_filename = metric + '_df_predicted.pkl'
+#     scatter_file = os.path.join(scatter_path, scatter_filename)
+#
+#     if ana_stream in scatter_df:
+#         d = scatter_df[ana_stream]
+#     else:
+#         d = dict()
+#     d.update({metric: pd.read_pickle(scatter_file)})
+#     scatter_df.update({ana_stream: d})
+#
+# hover = HoverTool(tooltips=[("ana_stream", "@ana_stream"),
+#                             ("index", "@index"),
+#                             ("r2", "@r2_test"),
+#                             ("mae", "@MAE_test"),
+#                             ("n_metrics", "@n_metrics"),
+#                             ])
+# box_zoom = BoxZoomTool()
+# output_file("scatter_test.html")
+#
+# if simple:
+#     p = figure(tools=[hover, 'wheel_zoom,box_zoom,reset'], plot_width=1100, plot_height=600, title=None, min_border=10,
+#                min_border_left=500, )
+#     r = p.scatter('r2_test', 'MAE_test', source=source, alpha=0.6)
+#     show(p)
+#
+# else:
+#     p = figure(tools=[hover, 'wheel_zoom,box_zoom,reset'], plot_width=1100, plot_height=600, title=None, min_border=10,
+#                min_border_left=500)
+#     r = p.scatter('r2_test', 'MAE_test', source=source, alpha=0.6)
+#     ph = figure(toolbar_location=None, plot_width=p.plot_width, plot_height=200, title=None, min_border=10,
+#                 min_border_left=50)
+#     zoom_df = scatter_df['04_scaler_standard_rfe_True_strat_False_reg_False_results_error'][
+#         'age__bothSexes_neuH__lh_ct_fsav4_sm0__rh_ct_fsav4_sm0']
+#     zoom_source = ColumnDataSource(zoom_df)
+#
+#     ph.circle('age', 'pred_age_test', source=zoom_source)
+#     layout = vplot(p, ph)
+#
+# show(p)
+#
+
+
+# all_ana = set(df.query('MAE_test < 10').index)
+# df_all = df.loc[all_ana]
+# df_all.ix[:, 'ana'] = df_all.index.values
+# multi_index = pd.MultiIndex.from_tuples(zip(df_all['ana'], df_all['FD_res']), names=['ana_id', 'FD_red'])
+# df_all.set_index(multi_index, inplace=True)
+# df_all.sort_index(inplace=True)
+# df_all.to_csv('00_df_all.csv')
+#
+# if len(all_ana) < 20:
+#     plt.figure()
+#     ax = sns.barplot(x="MAE_test", y="ana", data=df_all, hue='FD_res')
+#     plt.tight_layout()
+#     plt.savefig('00_all_bars_MAE.pdf')
+#
+#     plt.figure()
+#     ax = sns.barplot(x="r2_test", y="ana", data=df_all, hue='FD_res')
+#     plt.tight_layout()
+#     plt.savefig('00_all_bars_r2.pdf')
+#
+# good_ana = set(df.query('r2_test > .7').index)
+#
+# df_good = df.loc[good_ana]
+# df_good.ix[:, 'ana'] = df_good.index.values
+# multi_index = pd.MultiIndex.from_tuples(zip(df_good['ana'], df_good['FD_res']), names=['ana_id', 'FD_red'])
+# df_good.set_index(multi_index, inplace=True)
+# df_good.sort_index(inplace=True)
+#
+# def plot_bars(**kwargs):
+#
+#     def format_ticks(ax):
+#         def break_text(s, n):
+#             o = []
+#             while s:
+#                 o.append(s[:n])
+#                 s = s[n:]
+#             o = '\n'.join(o)
+#             return o
+#
+#         li = [break_text(l.get_text(), 50) for l in ax.get_yticklabels()]
+#         ax.set_yticklabels(li)
+#         return ax
+#
+#
+#     plt.figure()
+#     ax = sns.barplot(**kwargs)
+#     ax = format_ticks(ax)
+#     try:
+#         plt.tight_layout()
+#     except:
+#         pass
+#
+#
+# c = sns.color_palette()
+# plot_bars(x="MAE_test", y="ana", data=df_good, hue='FD_res')
+# plt.savefig('00_best_bars_MAE.pdf')
+#
+#
+# plt.figure()
+# plot_bars(x="r2_test", y="ana", data=df_good, hue='FD_res')
+# plt.savefig('00_best_bars_r2.pdf')
+#
+# f, axarr = plt.subplots(len(good_ana), 2, sharex=True, sharey=True, figsize=(15, 35))
+# for row, a in enumerate(good_ana):
+#     if len(a) > 50:
+#         a_str = a[:50] + '\n' + a[50:]
+#     else:
+#         a_str = a
+#
+#     ax = axarr[row, 0]
+#     sns.regplot(x='age', y='pred_age_test', data=scatter_df[False][a], ax=ax, color=c[0])
+#     ax.set_aspect('equal')
+#     ax.plot([10, 80], [10, 80], 'k')
+#     ax.set_title('%s\nr2 = %3.2f ' % (a_str, df[df.FD_res == False].loc[a]['r2_test']))
+#
+#     ax = axarr[row, 1]
+#     sns.regplot(x='age', y='pred_age_test', data=scatter_df[True][a], ax=ax, color=c[1])
+#     ax.set_aspect('equal')
+#     ax.plot([10, 80], [10, 80], 'k')
+#     ax.set_title('%s\nr2 = %3.2f ' % (a_str, df[df.FD_res == True].loc[a]['r2_test']))
+#
+# plt.tight_layout()
+# plt.savefig('00_best_scatters.pdf')
