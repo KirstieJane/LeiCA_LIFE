@@ -38,6 +38,12 @@ parcellations_dict['msdl_abide'] = {
                              'msdl_abide_2016/MSDL_ABIDE/maps.nii'),
     'is_probabilistic': True}
 
+parcellations_dict['basc_444'] = {
+    'nii_path': os.path.join(template_dir,
+                             'basc_multiscale_2015/template_cambridge_basc_multiscale_nii_sym/template_cambridge_basc_multiscale_sym_scale444.nii.gz'),
+    'is_probabilistic': False}
+
+
 use_n_procs = 5
 # plugin_name = 'MultiProc'
 plugin_name = 'CondorDAGMan'
