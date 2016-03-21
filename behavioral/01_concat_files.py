@@ -11,9 +11,7 @@ Imports and concatenates behav files
 
 import pandas as pd
 import numpy as np
-import pylab as plt
 import glob, os
-import seaborn as sns
 from collections import OrderedDict
 
 behav_out_folder = '/Users/franzliem/PowerFolders/LIFE/behavioral'
@@ -21,9 +19,12 @@ os.chdir('/Users/franzliem/Dropbox/LeiCA/LIFE/behavioral/data')
 n = OrderedDict()
 
 prov = pd.DataFrame([], columns=['from_file'])
+
+
 def add_prov(df, f_name):
     for c in df.columns.values:
         prov.loc[c] = f_name
+
 
 def read_life_excel(xls):
     df = pd.read_excel(xls)
@@ -150,14 +151,18 @@ df = df.join(df_befund[['MRT_BefundFazekas', 'mri_lesion_num', 'mri_tumors_num',
 # WML_lesionload (gen_lesionload) ist der ausgegebene Wert von LesionTOADS
 # WML_lesionload_norm_tiv (gen_n) ist Läsionsvolumen normalisiert mit TIV
 # WML_lesionload_norm_tiv_ln (gen_n_ln) ist das transformierte Läsionsvolumen, damit es normalverteilt ist (falls du mit parametrischen Tests arbeitest)
+# hier noch mal icv und wm_gesamt (das ist die gesamte white matter, also white matter + wmh)
+# general und wmh ist das gleiche.
 
-df_lesvol = pd.read_csv('lesions_franz.csv', )
-df_lesvol.set_index('SIC', inplace=True)
-df_lesvol = df_lesvol.ix[:, 1:]
-ren = {'gen_lesionload': 'WML_lesionload', 'gen_n': 'WML_lesionload_norm_tiv', 'gen_n_ln': 'WML_lesionload_norm_tiv_ln'}
-df_lesvol.rename(columns=ren, inplace=True)
+df_lesvol_1 = pd.read_csv('WML_20160313/forFranz.csv', index_col='SIC')
+df_lesvol_1.drop(['Unnamed: 0', 'general'], axis=1, inplace=True)
+df_lesvol_2 = pd.read_excel('WML_20160313/Lesions_for_Franz_normalized.xlsx', index_col='SIC')
+df_lesvol = pd.concat((df_lesvol_1, df_lesvol_2), axis=0)
 
-df = df.join(df_lesvol, how='left')
+df_lesvol['wmh_norm'] = df_lesvol['wmh'] / df_lesvol['WM_gesamt']
+df_lesvol['wmh_norm_ln'] = np.log(df_lesvol['wmh_norm'])
+
+df = df.join(df_lesvol[['WM_gesamt', 'wmh', 'wmh_norm', 'wmh_norm_ln']], how='left')
 
 n['post befund'] = len(df)
 n['neurol healthy'] = len(df.query('neurol_healthy'))
@@ -178,12 +183,11 @@ for f in tests:
 df_big.set_index(df_big.MRT_SIC, inplace=True)
 df_big.drop(labels=['R00001_PBD_GEBJAHRMON', 'dob', 'R00001_PBD_GESCHLECHT', 'MRT_SIC'], axis=1, inplace=True)
 
-
 df.to_pickle(os.path.join(behav_out_folder, 'LIFE_subjects_behav_n%s.pkl' % str(len(df))))
 df.to_excel(os.path.join(behav_out_folder, 'LIFE_subjects_behav_n%s.xlsx' % str(len(df))))
 
 df_big.to_excel(os.path.join(behav_out_folder, 'LIFE_subjects_behav_n%s_big.xlsx' % str(len(df_big))))
-prov.to_excel(os.path.join(behav_out_folder,'LIFE_subjects_behav_n%s_big_prov.xlsx' % str(len(df_big))))
+prov.to_excel(os.path.join(behav_out_folder, 'LIFE_subjects_behav_n%s_big_prov.xlsx' % str(len(df_big))))
 # df.to_pickle('../LIFE_subjects_behav_n%s.pkl' % str(len(df)))
 # df.to_excel('../LIFE_subjects_behav_n%s.xlsx' % str(len(df)))
 
