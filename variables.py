@@ -98,8 +98,8 @@ data_lookup_dict['craddock_205_BP'] = {'matrix_name': 'correlation', 'use_fisher
                                        'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
                                                                 'con_mat/matrix/bp_0.01.0.1/craddock_205/matrix.pkl')}
 data_lookup_dict['craddock_205_BP_scr05'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
-                                       'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
-                                                                'con_mat/matrix_scrubbed_0_5/bp_0.01.0.1/craddock_205/matrix.pkl')}
+                                             'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                                      'con_mat/matrix_scrubbed_0_5/bp_0.01.0.1/craddock_205/matrix.pkl')}
 
 data_lookup_dict['craddock_788_noBP'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
                                          'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
@@ -108,8 +108,8 @@ data_lookup_dict['craddock_788_BP'] = {'matrix_name': 'correlation', 'use_fisher
                                        'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
                                                                 'con_mat/matrix/bp_0.01.0.1/craddock_788/matrix.pkl')}
 data_lookup_dict['craddock_788_BP_scr05'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
-                                         'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
-                                                                  'con_mat/matrix_scrubbed_0_5/bp_0.01.0.1/craddock_788/matrix.pkl')}
+                                             'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                                      'con_mat/matrix_scrubbed_0_5/bp_0.01.0.1/craddock_788/matrix.pkl')}
 
 data_lookup_dict['gordon_noBP'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
                                    'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
@@ -119,8 +119,8 @@ data_lookup_dict['gordon_BP'] = {'matrix_name': 'correlation', 'use_fishers_z': 
                                                           'con_mat/matrix/bp_0.01.0.1/gordon/matrix.pkl')}
 
 data_lookup_dict['gordon_BP_scr05'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
-                                 'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
-                                                          'con_mat/matrix_scrubbed_0_5/bp_0.01.0.1/gordon/matrix.pkl')}
+                                       'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                                'con_mat/matrix_scrubbed_0_5/bp_0.01.0.1/gordon/matrix.pkl')}
 
 data_lookup_dict['gordon_BP_ds'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
                                     'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
@@ -129,18 +129,18 @@ data_lookup_dict['gordon_BP_ds'] = {'matrix_name': 'correlation', 'use_fishers_z
 
 # msdl abide
 data_lookup_dict['msdl_abide_BP'] = {'matrix_name': 'correlation',
-                                  'use_fishers_z': True,
-                                    'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
-                                                             'con_mat/matrix/bp_0.01.0.1/msdl_abide/matrix.pkl'),
-                                    'use_diagonal': True}
+                                     'use_fishers_z': True,
+                                     'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                              'con_mat/matrix/bp_0.01.0.1/msdl_abide/matrix.pkl'),
+                                     'use_diagonal': True}
 
 
 # BEHAV
-
-data_lookup_dict['behav_wml_load_tiv_ln'] = {'df_col_names': ['WML_lesionload_norm_tiv_ln'],
-                                             'path_str': '{subject_id}'}  # path_str for compatibilty
-data_lookup_dict['behav_wml_load_tiv'] = {'df_col_names': ['WML_lesionload_norm_tiv'], 'path_str': '{subject_id}'}
-data_lookup_dict['behav_wml_load'] = {'df_col_names': ['WML_lesionload'], 'path_str': '{subject_id}'}
+data_lookup_dict['behav_wml_wm_total'] = {'df_col_names': ['WM_gesamt'],
+                                          'path_str': '{subject_id}'}  # path_str for compatibilty
+data_lookup_dict['behav_wml_wmh_norm'] = {'df_col_names': ['wmh_norm'], 'path_str': '{subject_id}'}
+data_lookup_dict['behav_wml_wmh_norm_ln'] = {'df_col_names': ['wmh_norm_ln'], 'path_str': '{subject_id}'}
+data_lookup_dict['behav_wml_wmh_ln'] = {'df_col_names': ['wmh_ln'], 'path_str': '{subject_id}'}
 data_lookup_dict['behav_wml_fazekas'] = {'df_col_names': ['MRT_BefundFazekas'], 'path_str': '{subject_id}'}
 
 # # # # # # # # # #
