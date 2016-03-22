@@ -8,7 +8,7 @@ def vectorize_and_aggregate(in_data_file_list, mask_file, matrix_name, parcellat
     from LeiCA_LIFE.learning.prepare_data_utils import vectorize_ss
 
     # get an example of the data:
-    vectorized_data, data_type, masker, save_template = vectorize_ss(in_data_file_list[0], mask_file, matrix_name,
+    vectorized_data, data_type, masker = vectorize_ss(in_data_file_list[0], mask_file, matrix_name,
                                                                      parcellation_path, fwhm, use_diagonal,
                                                                      use_fishers_z, df_file,
                                                                      df_col_names)
@@ -24,7 +24,8 @@ def vectorize_and_aggregate(in_data_file_list, mask_file, matrix_name, parcellat
 
     unimodal_backprojection_info = {'data_type': data_type,
                                     'masker': masker,
-                                    'save_template': save_template}
+                                    'save_template': in_data_file_list[0]
+                                    }
     unimodal_backprojection_info_file = os.path.abspath('unimodal_backprojection_info.pkl')
     pickle.dump(unimodal_backprojection_info, open(unimodal_backprojection_info_file, 'w'))
     return vectorized_aggregated_file, unimodal_backprojection_info_file
@@ -36,8 +37,6 @@ def vectorize_ss(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, 
     import numpy as np
     from LeiCA_LIFE.learning.prepare_data_utils import _vectorize_nii, _vectorize_matrix, _vectorize_fs, \
         _vectorize_fs_tab, _vectorize_behav_df
-
-    save_template = in_data_file
 
     masker = None
     if in_data_file.endswith('.nii.gz'):  # 3d nii files
@@ -59,7 +58,7 @@ def vectorize_ss(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, 
 
     elif df_col_names:  # X from df behav
         # subject is inputted via in_data_file
-        vectorized_data, save_template = _vectorize_behav_df(df_file=df_file, subject=in_data_file,
+        vectorized_data = _vectorize_behav_df(df_file=df_file, subject=in_data_file,
                                                              df_col_names=df_col_names)
         data_type = 'behav'
 
@@ -76,7 +75,7 @@ def vectorize_ss(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, 
         vectorized_data = r_to_z(vectorized_data)
 
     vectorized_data = np.atleast_2d(vectorized_data)
-    return vectorized_data, data_type, masker, save_template
+    return vectorized_data, data_type, masker
 
 
 ###############################################################################################################
@@ -85,6 +84,7 @@ def vectorize_ss(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, 
 
 def _vectorize_nii(in_data_file, mask_file, parcellation_path, fwhm):
     from nilearn.input_data import NiftiMasker, NiftiLabelsMasker
+    import nibabel as nib
 
     if parcellation_path is None:
         masker = NiftiMasker(mask_img=mask_file, smoothing_fwhm=fwhm)
@@ -92,7 +92,6 @@ def _vectorize_nii(in_data_file, mask_file, parcellation_path, fwhm):
         masker = NiftiLabelsMasker(labels_img=parcellation_path, smoothing_fwhm=fwhm)
 
     vectorized_data = masker.fit_transform(in_data_file)
-
     return vectorized_data, masker
 
 
@@ -126,7 +125,6 @@ def _vectorize_matrix(in_data_file, matrix_name, use_diagonal=False):
 
     # get lower triangle
     vectorized_data = _lower_tria_vector(matrix[matrix_name], use_diagonal=use_diagonal)
-
     return vectorized_data
 
 
@@ -137,6 +135,7 @@ def _vectorize_fs(in_data_file):
     img = nb.load(in_data_file)
     in_data = img.get_data().squeeze()
     vectorized_data = in_data[np.newaxis, ...]
+
     return vectorized_data
 
 
@@ -152,10 +151,7 @@ def _vectorize_behav_df(df_file, subject, df_col_names):
     import os
     df = pd.read_pickle(df_file)
     vectorized_data = df.loc[subject][df_col_names].values
-
-    save_template = os.path.abspath('save_template.pkl')
-    df[df_col_names].to_pickle(save_template)
-    return vectorized_data, save_template
+    return vectorized_data
 
 
 ###############################################################################################################

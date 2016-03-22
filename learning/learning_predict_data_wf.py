@@ -139,10 +139,9 @@ def learning_predict_data_wf(working_dir,
     ###############################################################################################################
     # RUN PREDICTION
     #
-    scaler = ['standard', 'robust', 'minmax']
-    rfe = [False, True]
-    strat_split = [False, True]
-    strat_split = [False, True]
+    scaler = ['standard']  # ['standard', 'robust', 'minmax']
+    rfe = [False]  # [False, True]
+    strat_split = [False]  # [False, True]
     confound_regression = [False, True]
     prediction_node_dict = {}
     backprojection_node_dict = {}
@@ -179,7 +178,7 @@ def learning_predict_data_wf(working_dir,
         for r in rfe:
             for strat in strat_split:
                 for reg in confound_regression:
-                    the_out_node_str = '%02d_scaler_%s_rfe_%s_strat_%s_reg_%s_' % (i, s, r, strat,reg)
+                    the_out_node_str = '%02d_scaler_%s_rfe_%s_strat_%s_reg_%s_' % (i, s, r, strat, reg)
                     prediction_node_dict[i] = prediction_split.clone(the_out_node_str)
                     the_in_node = prediction_node_dict[i]
                     the_in_node.inputs.use_grid_search = False
@@ -200,10 +199,11 @@ def learning_predict_data_wf(working_dir,
                     wf.connect(the_in_node, 'df_use_file', ds_pdf, the_out_node_str + 'predicted')
                     wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
 
-                    if not strat: #backprojection with strat split is not possible, becaus no estimator is estimated
+                    if not strat:  # backprojection with strat split is not possible, becaus no estimator is estimated
                         # BACKPROJECT PREDICTION WEIGHTS
                         # map weights back to single modality original format (e.g., nifti or matrix)
-                        the_out_node_str = 'backprojection_%02d_scaler_%s_rfe_%s_strat_%s_reg_%s_' % (i, s, r, strat,reg)
+                        the_out_node_str = 'backprojection_%02d_scaler_%s_rfe_%s_strat_%s_reg_%s_' % (
+                        i, s, r, strat, reg)
                         backprojection_node_dict[i] = backproject_and_split_weights.clone(the_out_node_str)
                         the_from_node = prediction_node_dict[i]
                         the_in_node = backprojection_node_dict[i]
