@@ -159,8 +159,11 @@ df_lesvol_1.drop(['Unnamed: 0', 'general'], axis=1, inplace=True)
 df_lesvol_2 = pd.read_excel('WML_20160313/Lesions_for_Franz_normalized.xlsx', index_col='SIC')
 df_lesvol = pd.concat((df_lesvol_1, df_lesvol_2), axis=0)
 
+
 df_lesvol['wmh_norm'] = df_lesvol['wmh'] / df_lesvol['WM_gesamt']
-df_lesvol['wmh_norm_ln'] = np.log(df_lesvol['wmh_norm'])
+# + 1 to avoid Inf @ log(0)
+df_lesvol['wmh_norm_ln'] = np.log(df_lesvol['wmh_norm'] + 1)
+df_lesvol['wmh_ln'] = np.log(df_lesvol['wmh'] + 1)
 
 df = df.join(df_lesvol[['WM_gesamt', 'wmh', 'wmh_norm', 'wmh_norm_ln']], how='left')
 
