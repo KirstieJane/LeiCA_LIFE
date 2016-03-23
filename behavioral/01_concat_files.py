@@ -165,7 +165,7 @@ df_lesvol['wmh_norm'] = df_lesvol['wmh'] / df_lesvol['WM_gesamt']
 df_lesvol['wmh_norm_ln'] = np.log(df_lesvol['wmh_norm'] + 1)
 df_lesvol['wmh_ln'] = np.log(df_lesvol['wmh'] + 1)
 
-df = df.join(df_lesvol[['WM_gesamt', 'wmh', 'wmh_norm', 'wmh_norm_ln']], how='left')
+df = df.join(df_lesvol[['WM_gesamt', 'wmh', 'wmh_ln', 'wmh_norm', 'wmh_norm_ln']], how='left')
 
 n['post befund'] = len(df)
 n['neurol healthy'] = len(df.query('neurol_healthy'))
