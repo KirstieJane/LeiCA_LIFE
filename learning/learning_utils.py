@@ -449,7 +449,8 @@ def save_weights(data, data_type, save_template, outfile_name, masker=None):
 
     elif data_type == 'behav':
         outfile = os.path.abspath(outfile_name + weights_file_str + '.csv')
-        df = pd.read_pickle(save_template)
+        # for behav save_template contains colnames
+        df = pd.DataFrame([], columns=save_template)
         df.loc[outfile_name, :] = data
         df.to_csv(outfile)
         df.T.plot(kind='barh')

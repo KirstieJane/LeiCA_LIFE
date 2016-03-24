@@ -7,8 +7,8 @@ from learning.learning_variables import in_data_name_list
 from variables import wd_root_path, ds_root_path, data_lookup_dict, template_lookup_dict
 from variables import behav_file, qc_file
 
-wd_root_path = '/SCR/Franz/LeiCA_LIFE_learning_wd'
-ds_root_path = '/SCR2/Franz/LeiCA_LIFE'
+wd_root_path = '/scr/adenauer1/Franz/LeiCA_LIFE_learning_wd'
+ds_root_path = '/scr/adenauer2/Franz/LeiCA_LIFE'
 
 working_dir = os.path.join(wd_root_path, 'wd_learning')
 ds_dir = os.path.join(ds_root_path, 'learning_out')
@@ -16,7 +16,7 @@ ds_dir = os.path.join(ds_root_path, 'learning_out')
 use_n_procs = 1
 plugin_name = 'MultiProc'
 #fixme
-#in_data_name_list = [['msdl_abide_BP']]
+#in_data_name_list = [['falff_z_GM_WM_3mm_sm0'],['behav_wml_wmh_norm_ln']]
 
 learning_prepare_data_wf(working_dir=working_dir,
                          ds_dir=ds_dir,

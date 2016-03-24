@@ -8,7 +8,8 @@ def vectorize_and_aggregate(in_data_file_list, mask_file, matrix_name, parcellat
     from LeiCA_LIFE.learning.prepare_data_utils import vectorize_ss
 
     # get an example of the data:
-    vectorized_data, data_type, masker = vectorize_ss(in_data_file_list[0], mask_file, matrix_name,
+    #save_template: template file; for behav: col names
+    vectorized_data, data_type, masker, save_template = vectorize_ss(in_data_file_list[0], mask_file, matrix_name,
                                                                      parcellation_path, fwhm, use_diagonal,
                                                                      use_fishers_z, df_file,
                                                                      df_col_names)
@@ -24,7 +25,7 @@ def vectorize_and_aggregate(in_data_file_list, mask_file, matrix_name, parcellat
 
     unimodal_backprojection_info = {'data_type': data_type,
                                     'masker': masker,
-                                    'save_template': in_data_file_list[0]
+                                    'save_template': save_template
                                     }
     unimodal_backprojection_info_file = os.path.abspath('unimodal_backprojection_info.pkl')
     pickle.dump(unimodal_backprojection_info, open(unimodal_backprojection_info_file, 'w'))
@@ -39,6 +40,7 @@ def vectorize_ss(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, 
         _vectorize_fs_tab, _vectorize_behav_df
 
     masker = None
+    save_template = in_data_file
     if in_data_file.endswith('.nii.gz'):  # 3d nii files
         vectorized_data, masker = _vectorize_nii(in_data_file, mask_file, parcellation_path, fwhm)
         data_type = '3dnii'
@@ -61,6 +63,7 @@ def vectorize_ss(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, 
         vectorized_data = _vectorize_behav_df(df_file=df_file, subject=in_data_file,
                                                              df_col_names=df_col_names)
         data_type = 'behav'
+        save_template = df_col_names
 
     else:
         raise Exception('Cannot guess type from filename: %s' % in_data_file)
@@ -75,7 +78,7 @@ def vectorize_ss(in_data_file, mask_file, matrix_name, parcellation_path, fwhm, 
         vectorized_data = r_to_z(vectorized_data)
 
     vectorized_data = np.atleast_2d(vectorized_data)
-    return vectorized_data, data_type, masker
+    return vectorized_data, data_type, masker, save_template
 
 
 ###############################################################################################################
