@@ -127,6 +127,28 @@ df_big = df_big.join(df_vf, how='left', lsuffix='1', rsuffix='2')
 df = df.join(df_vf[['VF_phon', 'VF_sem']], how='left')
 
 
+# add STROOP
+df_stroop = read_life_excel('STROOP_20160330/PV0250_T00926.xlsx')
+ren = {'T00926_PC_NEUTRAL': 'STROOP_PC_NEUTRAL',
+       'T00926_PC_INKON': 'STROOP_PC_INKON',
+       'T00926_RT_NEUTRAL': 'STROOP_RT_NEUTRAL',
+       'T00926_RT_INKON': 'STROOP_RT_INKON',
+       'T00926_TIMEOUT_NEUTRAL': 'STROOP_TIMEOUT_NEUTRAL',
+       'T00926_TIMEOUT_INKON': 'STROOP_TIMEOUT_INKON'}
+
+df_stroop.rename(columns=ren, inplace=True)
+add_prov(df_stroop, 'PV0250_T00926.xlsx')
+df_stroop = create_multi_index(df_stroop)
+
+df_stroop = df_stroop[['STROOP_RT_NEUTRAL', 'STROOP_PC_NEUTRAL', 'STROOP_RT_INKON', 'STROOP_TIMEOUT_INKON',
+                        'STROOP_TIMEOUT_NEUTRAL', 'STROOP_PC_INKON']]
+df = df.join(df_stroop, how='left')
+#df_big = df_big.join(df_stroop, how='left', lsuffix='1', rsuffix='2')
+df_big = df_big.join(df_stroop, how='left')
+
+
+
+
 
 # remove duplicates and set index back to sic
 df.set_index(df.MRT_SIC, inplace=True)
@@ -158,7 +180,6 @@ df_lesvol_1 = pd.read_csv('WML_20160313/forFranz.csv', index_col='SIC')
 df_lesvol_1.drop(['Unnamed: 0', 'general'], axis=1, inplace=True)
 df_lesvol_2 = pd.read_excel('WML_20160313/Lesions_for_Franz_normalized.xlsx', index_col='SIC')
 df_lesvol = pd.concat((df_lesvol_1, df_lesvol_2), axis=0)
-
 
 df_lesvol['wmh_norm'] = df_lesvol['wmh'] / df_lesvol['WM_gesamt']
 # + 1 to avoid Inf @ log(0)
