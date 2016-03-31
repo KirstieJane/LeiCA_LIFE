@@ -150,8 +150,12 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
 
     if rfe:
         n_features = X.shape[1]
-        eliminate = RFE(estimator=regression_model, n_features_to_select=int(n_features * .2), step=.5)
-        pipeline_list.append(('rfe', eliminate))
+        n_features_to_select = int(n_features * .2)
+        if n_features_to_select>0: #only perform rfe if features remain
+            eliminate = RFE(estimator=regression_model, n_features_to_select=n_features_to_select, step=.5)
+            pipeline_list.append(('rfe', eliminate))
+        else:
+            pipeline_list.append(('regression_model', regression_model))
     else:
         pipeline_list.append(('regression_model', regression_model))
 
@@ -462,3 +466,63 @@ def save_weights(data, data_type, save_template, outfile_name, masker=None):
     plt.close()
 
     return outfile, outfile_render
+
+
+
+###############################################################################################################
+# PREDICTION from trained model
+def run_prediction_from_trained_model_fct(trained_model_file, X_file, target_name, selection_criterium, df_file, data_str, regress_confounds=False):
+    import os, pickle
+    import numpy as np
+    import pandas as pd
+    from sklearn.metrics import r2_score, mean_absolute_error
+    from LeiCA_LIFE.learning.learning_utils import pred_real_scatter, plot_brain_age, residualize_group_data
+
+    data_str = target_name + '__' + selection_criterium + '__' + data_str
+
+    df = pd.read_pickle(df_file)
+    df['pred_age_test'] = np.nan
+
+    X = np.load(X_file)
+    y = df[[target_name]].values.squeeze()
+    confounds = df[['mean_FD_P']].values
+
+    # REGRESS OUT CONFOUNDS IF NEEDED
+    if regress_confounds:
+        X = residualize_group_data(X, confounds)
+
+    with open(trained_model_file, 'r') as f:
+        pipe = pickle.load(f)
+
+    # RUND PREDICTION
+    y_predicted = pipe.predict(X)
+
+    df.ix[:, ['pred_age_test']] = y_predicted
+
+    test_mae = mean_absolute_error(y, y_predicted)
+    test_r2 = r2_score(y, y_predicted)
+
+    test_r2_std = np.nan
+    test_mae_std = np.nan
+    train_r2 = np.nan
+    train_mae = np.nan
+
+    title_str = 'r2: {:.3f} MAE:{:.3f}'.format(test_r2, test_mae)
+    scatter_file = pred_real_scatter(y, y_predicted, title_str, data_str)
+
+    brain_age_scatter_file = plot_brain_age(y, y_predicted, data_str)
+
+    df_use_file = os.path.join(os.getcwd(), data_str + '_df_predicted.pkl')
+    df.to_pickle(df_use_file)
+
+    # performace results df
+    df_res_out_file = os.path.abspath(data_str + '_df_results.pkl')
+    df_res = pd.DataFrame(
+        {'FD_res': regress_confounds, 'r2_train': [train_r2], 'MAE_train': [train_mae],
+         'r2_test': [test_r2], 'r2_test_std': [test_r2_std],
+         'MAE_test': [test_mae], 'MAE_test_std': [test_mae_std]},
+        columns=['FD_res', 'r2_train', 'MAE_train', 'r2_test', 'r2_test_std', 'MAE_test', 'MAE_test_std'],
+        index=[data_str])
+    df_res.to_pickle(df_res_out_file)
+
+    return scatter_file, brain_age_scatter_file, df_use_file, df_res_out_file
