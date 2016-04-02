@@ -59,7 +59,7 @@ import sklearn.svm
 #outer_cv = optunity.cross_validated(x=X, y=y, num_folds=3)
 
 
-#fixme try with fd reg
+#fixme try with fd ana_stream
 if False:
     x_train = residualize_group_data(x_train, confounds_train)
     x_test = residualize_group_data(x_test, confounds_test)
