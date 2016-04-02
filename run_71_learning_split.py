@@ -16,7 +16,7 @@ ds_dir = os.path.join(ds_root_path, 'learning_out')
 aggregated_subjects_dir = os.path.join(ds_dir, 'vectorized_aggregated_data')
 
 
-use_n_procs = 50
+use_n_procs = 30
 plugin_name = 'MultiProc'
 
 #in_data_name_list = [['falff_z_GM_WM_3mm_sm0'],['behav_wml_wmh_norm_ln']]
