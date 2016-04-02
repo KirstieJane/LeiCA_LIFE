@@ -151,7 +151,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     if rfe:
         n_features = X.shape[1]
         n_features_to_select = int(n_features * .2)
-        if n_features_to_select>0: #only perform rfe if features remain
+        if n_features_to_select > 0:  # only perform rfe if features remain
             eliminate = RFE(estimator=regression_model, n_features_to_select=n_features_to_select, step=.5)
             pipeline_list.append(('rfe', eliminate))
         else:
@@ -187,6 +187,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         test_r2_std = r2.std()
         test_mae = np.abs(mae.mean())
         test_mae_std = mae.std()
+        test_rpear2 = np.nan
 
         out_str = 'r2:  M = %0.7f \t SD = %0.7f\n' % (test_r2, test_r2_std)
         out_str += 'mae: M = %0.7f \t SD = %0.7f\n' % (test_mae, test_mae_std)
@@ -211,6 +212,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
 
         test_mae = mean_absolute_error(y_test, y_predicted)
         test_r2 = r2_score(y_test, y_predicted)
+        test_rpear2 = np.corrcoef(y_test, y_predicted)[0, 1]
 
         train_mae = mean_absolute_error(y_train, y_predicted_train)
         train_r2 = r2_score(y_train, y_predicted_train)
@@ -242,9 +244,8 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     df_res_out_file = os.path.abspath(data_str + '_df_results.pkl')
     df_res = pd.DataFrame(
         {'FD_res': regress_confounds, 'r2_train': [train_r2], 'MAE_train': [train_mae],
-         'r2_test': [test_r2], 'r2_test_std': [test_r2_std],
+         'r2_test': [test_r2], 'r2_test_std': [test_r2_std], 'rpear2_test': [test_rpear2],
          'MAE_test': [test_mae], 'MAE_test_std': [test_mae_std]},
-        columns=['FD_res', 'r2_train', 'MAE_train', 'r2_test', 'r2_test_std', 'MAE_test', 'MAE_test_std'],
         index=[data_str])
     df_res.to_pickle(df_res_out_file)
 
@@ -398,6 +399,7 @@ def save_weights(data, data_type, save_template, outfile_name, masker=None):
     import os
     from nilearn import plotting
     import pylab as plt
+    from LeiCA_LIFE.learning.prepare_data_utils import vector_to_matrix
 
     weights_file_str = '_weights'
     render_file_str = '_rendering'
@@ -415,6 +417,7 @@ def save_weights(data, data_type, save_template, outfile_name, masker=None):
 
     elif data_type == 'matrix':
         outfile = os.path.abspath(outfile_name + weights_file_str + '.npy')
+        data = vector_to_matrix(data, use_diagonal=False)
         np.save(outfile, data)
 
         plt.imshow(data, interpolation='nearest')
@@ -468,10 +471,10 @@ def save_weights(data, data_type, save_template, outfile_name, masker=None):
     return outfile, outfile_render
 
 
-
 ###############################################################################################################
 # PREDICTION from trained model
-def run_prediction_from_trained_model_fct(trained_model_file, X_file, target_name, selection_criterium, df_file, data_str, regress_confounds=False):
+def run_prediction_from_trained_model_fct(trained_model_file, X_file, target_name, selection_criterium, df_file,
+                                          data_str, regress_confounds=False):
     import os, pickle
     import numpy as np
     import pandas as pd
@@ -501,6 +504,7 @@ def run_prediction_from_trained_model_fct(trained_model_file, X_file, target_nam
 
     test_mae = mean_absolute_error(y, y_predicted)
     test_r2 = r2_score(y, y_predicted)
+    test_rpear2 = np.corrcoef(y, y_predicted)[0, 1]
 
     test_r2_std = np.nan
     test_mae_std = np.nan
@@ -519,9 +523,8 @@ def run_prediction_from_trained_model_fct(trained_model_file, X_file, target_nam
     df_res_out_file = os.path.abspath(data_str + '_df_results.pkl')
     df_res = pd.DataFrame(
         {'FD_res': regress_confounds, 'r2_train': [train_r2], 'MAE_train': [train_mae],
-         'r2_test': [test_r2], 'r2_test_std': [test_r2_std],
+         'r2_test': [test_r2], 'r2_test_std': [test_r2_std],'rpear2_test': [test_rpear2],
          'MAE_test': [test_mae], 'MAE_test_std': [test_mae_std]},
-        columns=['FD_res', 'r2_train', 'MAE_train', 'r2_test', 'r2_test_std', 'MAE_test', 'MAE_test_std'],
         index=[data_str])
     df_res.to_pickle(df_res_out_file)
 
