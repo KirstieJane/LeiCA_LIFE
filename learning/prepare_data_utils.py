@@ -166,6 +166,7 @@ def vector_to_matrix(v, use_diagonal=False):
     matrix diagonal is set to 0
     '''
     import numpy as np
+    v = np.squeeze(v)
     vector_size = v.shape[0]
     if use_diagonal:
         diag_add = -1
