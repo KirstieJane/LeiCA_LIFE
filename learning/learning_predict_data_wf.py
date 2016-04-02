@@ -140,7 +140,7 @@ def learning_predict_data_wf(working_dir,
     # RUN PREDICTION
     #
     scaler = ['standard']  # ['standard', 'robust', 'minmax']
-    rfe = [False]  # [False, True]
+    rfe = [False, True]
     strat_split = [False]  # [False, True]
     confound_regression = [False, True]
     prediction_node_dict = {}
