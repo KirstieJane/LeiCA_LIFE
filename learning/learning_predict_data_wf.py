@@ -6,7 +6,11 @@ def learning_predict_data_wf(working_dir,
                              aggregated_subjects_dir,
                              target_list,
                              use_n_procs,
-                             plugin_name):
+                             plugin_name,
+                             scaler=['standard'],
+                             rfe=[False, True],
+                             strat_split=[False],
+                             confound_regression=[False, True]):
     import os
     from nipype import config
     from nipype.pipeline.engine import Node, Workflow
@@ -139,10 +143,6 @@ def learning_predict_data_wf(working_dir,
     ###############################################################################################################
     # RUN PREDICTION
     #
-    scaler = ['standard']  # ['standard', 'robust', 'minmax']
-    rfe = [False, True]
-    strat_split = [False]  # [False, True]
-    confound_regression = [False, True]
     prediction_node_dict = {}
     backprojection_node_dict = {}
 
@@ -203,7 +203,7 @@ def learning_predict_data_wf(working_dir,
                         # BACKPROJECT PREDICTION WEIGHTS
                         # map weights back to single modality original format (e.g., nifti or matrix)
                         the_out_node_str = 'backprojection_%02d_scaler_%s_rfe_%s_strat_%s_reg_%s_' % (
-                        i, s, r, strat, reg)
+                            i, s, r, strat, reg)
                         backprojection_node_dict[i] = backproject_and_split_weights.clone(the_out_node_str)
                         the_from_node = prediction_node_dict[i]
                         the_in_node = backprojection_node_dict[i]

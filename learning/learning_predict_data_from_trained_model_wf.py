@@ -7,7 +7,11 @@ def learning_predict_data_wf(working_dir,
                              aggregated_subjects_dir,
                              target_list,
                              use_n_procs,
-                             plugin_name):
+                             plugin_name,
+                             scaler=['standard'],
+                             rfe=[False, True],
+                             strat_split=[False],
+                             confound_regression=[False, True]):
     import os
     from nipype import config
     from nipype.pipeline.engine import Node, Workflow
@@ -140,10 +144,6 @@ def learning_predict_data_wf(working_dir,
     ###############################################################################################################
     # RUN PREDICTION
     #
-    scaler = ['standard']  # ['standard', 'robust', 'minmax']
-    rfe = [False, True]
-    strat_split = [False]  # [False, True]
-    confound_regression = [False, True]
     prediction_node_dict = {}
     select_trained_model_node_dict = {}
 
@@ -160,8 +160,9 @@ def learning_predict_data_wf(working_dir,
                                                   'df_res_out_file'],
                                     function=run_prediction_from_trained_model_fct),
                       name='prediction')
+
     def rep(s):
-        return  s.replace('__','.')
+        return s.replace('__', '.')
 
     trained_model_template = {
         'trained_model': 'learning_out/group_learning_prepare_data/{ana_stream}trained_model/' +
@@ -183,8 +184,9 @@ def learning_predict_data_wf(working_dir,
                     select_trained_model_node_dict[i].inputs.ana_stream = the_out_node_str
 
                     wf.connect(target_infosource, 'target_name', select_trained_model_node_dict[i], 'target_name')
-                    #wf.connect(aggregate_multimodal_metrics, 'multimodal_name', select_trained_model_node_dict[i],
-                    wf.connect(aggregate_multimodal_metrics, ('multimodal_name', rep), select_trained_model_node_dict[i],
+                    # wf.connect(aggregate_multimodal_metrics, 'multimodal_name', select_trained_model_node_dict[i],
+                    wf.connect(aggregate_multimodal_metrics, ('multimodal_name', rep),
+                               select_trained_model_node_dict[i],
                                'multimodal_in_data_name')
 
                     prediction_node_dict[i] = prediction.clone(the_out_node_str)
