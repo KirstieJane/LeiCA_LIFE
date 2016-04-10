@@ -204,8 +204,6 @@ def learning_predict_data_wf(working_dir,
                     wf.connect(the_in_node, 'brain_age_scatter_file', ds_pdf, the_out_node_str + 'brain_age_scatter')
                     wf.connect(the_in_node, 'df_use_file', ds_pdf, the_out_node_str + 'predicted')
                     wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
-                    wf.connect(the_in_node, 'scatter_file_no_motion', ds_pdf, the_out_node_str + 'scatter_motion.@no_motion')
-                    wf.connect(the_in_node, 'scatter_file_random_motion', ds_pdf, the_out_node_str + 'scatter_motion@random_motion')
 
                     i += 1
 
