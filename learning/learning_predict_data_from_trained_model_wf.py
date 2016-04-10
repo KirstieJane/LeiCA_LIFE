@@ -176,7 +176,7 @@ def learning_predict_data_wf(working_dir,
         for r in rfe:
             for strat in strat_split:
                 for reg in confound_regression:
-                    the_out_node_str = '%02d_scaler_%s_rfe_%s_strat_%s_reg_%s_' % (i, s, r, strat, reg)
+                    the_out_node_str = 'scaler_%s_rfe_%s_strat_%s_reg_%s_' % (s, r, strat, reg)
 
                     select_trained_model_node_dict[i] = select_trained_model.clone(
                         the_out_node_str + 'select_trained_model')
@@ -204,6 +204,8 @@ def learning_predict_data_wf(working_dir,
                     wf.connect(the_in_node, 'brain_age_scatter_file', ds_pdf, the_out_node_str + 'brain_age_scatter')
                     wf.connect(the_in_node, 'df_use_file', ds_pdf, the_out_node_str + 'predicted')
                     wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
+                    wf.connect(the_in_node, 'scatter_file_no_motion', ds_pdf, the_out_node_str + 'scatter_motion.@no_motion')
+                    wf.connect(the_in_node, 'scatter_file_random_motion', ds_pdf, the_out_node_str + 'scatter_motion@random_motion')
 
                     i += 1
 

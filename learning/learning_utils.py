@@ -85,13 +85,22 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     from sklearn.preprocessing import Imputer
     from sklearn.pipeline import Pipeline
     from sklearn.metrics import r2_score, mean_absolute_error
-    from sklearn.cross_validation import train_test_split, StratifiedShuffleSplit
+    from sklearn.cross_validation import train_test_split, StratifiedShuffleSplit, ShuffleSplit
     from sklearn.grid_search import GridSearchCV
     from LeiCA_LIFE.learning.learning_utils import pred_real_scatter, plot_brain_age, residualize_group_data
     from sklearn.decomposition import PCA
     from sklearn.feature_selection import RFE
     from sklearn.feature_selection import SelectKBest, f_regression
     data_str = target_name + '__' + selection_criterium + '__' + data_str
+
+    variables = ['train_mae', 'train_r2', 'cv_r2_mean', 'cv_r2_std', 'no_motion_r2', 'random_motion_r2',
+                 'no_motion_mae', 'random_motion_mae', 'y_no_motion', 'y_random_motion', 'y_predicted_no_motion',
+                 'y_predicted_random_motion']
+    for v in variables:
+        try:
+            exec (v)
+        except NameError:
+            exec ('%s = np.nan' % v)
 
     df = pd.read_pickle(df_file)
     # add ouput cols to df
@@ -126,24 +135,9 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     # PREPROCESSING
     fill_missing = Imputer()
     var_thr = VarianceThreshold()
-
-    if scaler == 'standard':
-        normalize = StandardScaler()
-    elif scaler == 'robust':
-        normalize = RobustScaler()
-    elif scaler == 'minmax':
-        normalize = MinMaxScaler()
-    else:
-        raise Exception('scaler not detected: %s' % scaler)
+    normalize = StandardScaler()
 
     regression_model = SVR(kernel='linear', cache_size=1000)
-    # fixme
-    # C = 50000
-    # epsilon = .1
-    # regression_model = SVR(kernel='linear', C=C, epsilon=epsilon)
-    # regression_model = SVR(kernel='poly', degree=2, C=C, epsilon=epsilon)
-
-
     pipeline_list = [('fill_missing', fill_missing),
                      ('var_thr', var_thr),
                      ('normalize', normalize)]
@@ -153,25 +147,12 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         n_features_to_select = int(n_features * .2)
         if n_features_to_select > 0:  # only perform rfe if features remain
             anova_filter = SelectKBest(f_regression, k=n_features_to_select)
-            #eliminate = RFE(estimator=regression_model, n_features_to_select=n_features_to_select, step=.5)
+            # eliminate = RFE(estimator=regression_model, n_features_to_select=n_features_to_select, step=.5)
             pipeline_list.append(('anova_filter', anova_filter))
 
     pipeline_list.append(('regression_model', regression_model))
 
     pipeline = Pipeline(pipeline_list)
-
-    if use_grid_search:
-        params = {
-            'regression_model__C': [.00001, .0001, .001, .01, .1, 1, 10,
-                                    100, 2000, 14450],
-            # 'regression_model__epsilon': [0, .005, .01, .05, .1, 1, 5, 10],
-        }
-        pipe = GridSearchCV(pipeline, params, cv=5,
-                            scoring='mean_absolute_error', n_jobs=2)
-    elif strat_split:
-        pass # create pipe later
-    else:
-        pipe = pipeline
 
     if strat_split:
         # n_bins = 10
@@ -184,13 +165,13 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         n_bins = 10
         df['mean_FD_P_bins'] = pd.cut(df['mean_FD_P'], n_bins, labels=range(n_bins))
         cv = StratifiedShuffleSplit(df['mean_FD_P_bins'].values, 2, test_size=0.5, random_state=0)
-        ind_train = cv.y==0
-        X_train = X[ind_train,:]
+        ind_train = cv.y == 0
+        X_train = X[ind_train, :]
         y_train = y[ind_train]
         confounds_train = confounds[ind_train]
 
-        ind_test = cv.y==1
-        X_test = X[ind_test,:]
+        ind_test = cv.y == 1
+        X_test = X[ind_test, :]
         y_test = y[ind_test]
         confounds_test = confounds[ind_test]
 
@@ -213,56 +194,13 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         test_r2 = r2_score(y_test, y_predicted)
         test_rpear2 = np.corrcoef(y_test, y_predicted)[0, 1]
 
-        train_mae = np.nan
-        train_r2 = np.nan
 
-        test_r2_std = np.nan
-        test_mae_std = np.nan
 
-        # train_r2 = np.nan
-        # train_mae = np.nan
-        # test_r2 = r2.mean()
-        # test_r2_std = r2.std()
-        # test_mae = np.abs(mae.mean())
-        # test_mae_std = mae.std()
-        # test_rpear2 = np.nan
-        #
-        # out_str = 'r2:  M = %0.7f \t SD = %0.7f\n' % (test_r2, test_r2_std)
-        # out_str += 'mae: M = %0.7f \t SD = %0.7f\n' % (test_mae, test_mae_std)
-        # scatter_file = os.path.abspath('score_%s.txt' % data_str)
-        # with open(scatter_file, 'w') as fi:
-        #     fi.write(out_str)
-        #
-        #
-        # # fixme needed:?
-        # empty_file = os.path.abspath('empty.txt')
-        # with open(empty_file, 'w') as fi:
-        #     fi.write('')
-        # brain_age_scatter_file = df_use_file = empty_file  # or = ''
-        ###
-
-        # test_mae_list = []
-        # test_r2_list = []
-        # test_rpear2_list = []
-        # coef_list = []
-        # intercept_list=[]
-        # for train_index, test_index in cv:
-        #     X_train, X_test = X[train_index], X[test_index]
-        #     y_train, y_test = y[train_index], y[test_index]
-        #
-        #     pipe.fit(X_train, y_train)
-        #     y_predicted_train = pipe.predict(X_train)
-        #     y_predicted = pipe.predict(X_test)
-        #
-        #     test_mae_list.append(mean_absolute_error(y_test, y_predicted))
-        #     test_r2_list.append(r2_score(y_test, y_predicted))
-        #     test_rpear2_list.append(np.corrcoef(y_test, y_predicted)[0, 1])
-        #
-        #     coef_list.append(backproject_weights(pipe))
-        #     intercept_list.append(pipe.named_steps['regression_model'].intercept_)
 
 
     else:
+        pipe = pipeline
+
         pipe.fit(X_train, y_train)
         y_predicted_train = pipe.predict(X_train)
         y_predicted = pipe.predict(X_test)
@@ -277,42 +215,93 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         train_mae = mean_absolute_error(y_train, y_predicted_train)
         train_r2 = r2_score(y_train, y_predicted_train)
 
-        test_r2_std = np.nan
-        test_mae_std = np.nan
+
+
+
+        #### Motion equal age groups
+        df['no_motion_grp'] = False
+        df.loc[
+            (df['mean_FD_P'] > .17) & (df['mean_FD_P'] < 0.27) & (df['split_group'] == 'test'), 'no_motion_grp'] = True
+        no_motion = df.query('no_motion_grp')
+
+        n_bins = 30
+        df['age_bins'] = pd.cut(df['age'], n_bins, labels=range(n_bins))
+        no_motion = df.query('no_motion_grp')
+
+        # sns.barplot('age_bins', 'mean_FD_P', data=no_motion);
+        # plt.show()
+
+        all_test_ind = np.where(df.split_group == 'test')[0]
+        rand_sel_test_ind = all_test_ind.copy()
+        np.random.shuffle(rand_sel_test_ind)
+        rand_sel_test_ind = rand_sel_test_ind[:len(no_motion)]
+        df['random_motion_grp'] = False
+        df.ix[rand_sel_test_ind, 'random_motion_grp'] = True
+
+        df['pred_age_no_motion'] = np.nan
+        df['pred_age_random_motion'] = np.nan
+
+        # pred
+        no_motion_ind = []
+        for s in df[df.no_motion_grp].index:
+            no_motion_ind.append(df.index.get_loc(s))
+
+        X_no_motion = X[no_motion_ind, :]
+        y_no_motion = y[no_motion_ind]
+        y_predicted_no_motion = pipe.predict(X_no_motion)
+        df.ix[no_motion_ind, ['pred_age_no_motion']] = y_predicted_no_motion
+
+        random_motion_ind = []
+        for s in df[df.random_motion_grp].index:
+            random_motion_ind.append(df.index.get_loc(s))
+
+        X_random_motion = X[random_motion_ind, :]
+        y_random_motion = y[random_motion_ind]
+        y_predicted_random_motion = pipe.predict(X_random_motion)
+        df.ix[random_motion_ind, ['pred_age_random_motion']] = y_predicted_random_motion
+
+        no_motion_r2 = r2_score(y_predicted_no_motion, y_no_motion)
+        no_motion_mae = mean_absolute_error(y_predicted_no_motion, y_no_motion)
+
+        random_motion_r2 = r2_score(y_predicted_random_motion, y_random_motion)
+        random_motion_mae = mean_absolute_error(y_predicted_random_motion, y_random_motion)
+
+        cv = ShuffleSplit(X_train.shape[0], n_iter=10, test_size=0.2)
+        cv_score = cross_val_score(pipe, X_train, y_train, cv=cv)  # , n_jobs=10
+        cv_r2_mean = cv_score.mean()
+        cv_r2_std = cv_score.std()
 
     title_str = 'r2: {:.3f} MAE:{:.3f}'.format(test_r2, test_mae)
     scatter_file = pred_real_scatter(y_test, y_predicted, title_str, data_str)
 
-    # grid scores as textfile
-    if use_grid_search:
-        sorted_grid_score = sorted(pipe.grid_scores_,
-                                   key=lambda x: x.mean_validation_score,
-                                   reverse=True)
-        score_str = [str(n) + ': ' + str(g) for n, g in
-                     enumerate(sorted_grid_score)]
-        gs_text_file = os.path.abspath('gs_txt_' + data_str + '.txt')
-        with open(gs_text_file, 'w') as f:
-            f.write('\n'.join(score_str))
-        scatter_file = [scatter_file, gs_text_file]
+    title_str = 'r2: {:.3f} MAE:{:.3f}'.format(no_motion_r2, no_motion_mae)
+    scatter_file_no_motion = pred_real_scatter(y_no_motion, y_predicted_no_motion, title_str, data_str,
+                                               post_str='_no_motion')
+    title_str = 'r2: {:.3f} MAE:{:.3f}'.format(random_motion_r2, random_motion_mae)
+    scatter_file_random_motion = pred_real_scatter(y_random_motion, y_predicted_random_motion, title_str, data_str,
+                                                   post_str='_random_motion')
 
     brain_age_scatter_file = plot_brain_age(y_test, y_predicted, data_str)
 
     df_use_file = os.path.join(os.getcwd(), data_str + '_df_predicted.pkl')
     df.to_pickle(df_use_file)
 
+
+
     # performace results df
     df_res_out_file = os.path.abspath(data_str + '_df_results.pkl')
     df_res = pd.DataFrame(
-        {'FD_res': regress_confounds, 'r2_train': [train_r2], 'MAE_train': [train_mae],
-         'r2_test': [test_r2], 'r2_test_std': [test_r2_std], 'rpear2_test': [test_rpear2],
-         'MAE_test': [test_mae], 'MAE_test_std': [test_mae_std]},
+        {'FD_res': regress_confounds, 'r2_train': [train_r2], 'MAE_train': [train_mae], 'r2_test': [test_r2],
+         'rpear2_test': [test_rpear2], 'MAE_test': [test_mae], 'cv_r2_mean': [cv_r2_mean], 'cv_r2_std': [cv_r2_std],
+         'no_motion_r2': [no_motion_r2], 'random_motion_r2': random_motion_r2},
         index=[data_str])
     df_res.to_pickle(df_res_out_file)
 
     model_out_file = os.path.join(os.getcwd(), 'trained_model.pkl')
     with open(model_out_file, 'w') as f:
         pickle.dump(pipe, f)
-    return scatter_file, brain_age_scatter_file, df_use_file, model_out_file, df_res_out_file
+    return scatter_file, brain_age_scatter_file, df_use_file, model_out_file, df_res_out_file, \
+           scatter_file_no_motion, scatter_file_random_motion
 
 
 def residualize_group_data(signals, confounds):
@@ -328,7 +317,7 @@ def residualize_group_data(signals, confounds):
     return residualized_signals
 
 
-def pred_real_scatter(y_test, y_test_predicted, title_str, in_data_name):
+def pred_real_scatter(y_test, y_test_predicted, title_str, in_data_name, post_str=''):
     import os
     import pylab as plt
     from matplotlib.backends.backend_pdf import PdfPages
@@ -341,7 +330,7 @@ def pred_real_scatter(y_test, y_test_predicted, title_str, in_data_name):
     ax.set_aspect('equal')
     plt.title(title_str)
     plt.tight_layout()
-    scatter_file = os.path.join(os.getcwd(), 'scatter_' + in_data_name + '.pdf')
+    scatter_file = os.path.join(os.getcwd(), 'scatter_' + in_data_name + post_str + '.pdf')
     pp = PdfPages(scatter_file)
     pp.savefig()
     pp.close()
@@ -568,8 +557,9 @@ def run_prediction_from_trained_model_fct(trained_model_file, X_file, target_nam
     # bagging can't deal with missing values-> impute
     if np.any(np.isnan(X)) & isinstance(pipe, sklearn.ensemble.bagging.BaggingRegressor):
         # get mean of means
-        statistics_ = np.asarray([estimator.named_steps['fill_missing'].statistics_ for estimator in pipe.estimators_]).mean(0)
-        fill_matrix = np.repeat([statistics_],X.shape[0], axis=0)
+        statistics_ = np.asarray(
+            [estimator.named_steps['fill_missing'].statistics_ for estimator in pipe.estimators_]).mean(0)
+        fill_matrix = np.repeat([statistics_], X.shape[0], axis=0)
         X[np.isnan(X)] = fill_matrix[np.isnan(X)]
 
 
@@ -583,8 +573,6 @@ def run_prediction_from_trained_model_fct(trained_model_file, X_file, target_nam
     test_r2 = r2_score(y, y_predicted)
     test_rpear2 = np.corrcoef(y, y_predicted)[0, 1]
 
-    test_r2_std = np.nan
-    test_mae_std = np.nan
     train_r2 = np.nan
     train_mae = np.nan
 
@@ -600,8 +588,8 @@ def run_prediction_from_trained_model_fct(trained_model_file, X_file, target_nam
     df_res_out_file = os.path.abspath(data_str + '_df_results.pkl')
     df_res = pd.DataFrame(
         {'FD_res': regress_confounds, 'r2_train': [train_r2], 'MAE_train': [train_mae],
-         'r2_test': [test_r2], 'r2_test_std': [test_r2_std], 'rpear2_test': [test_rpear2],
-         'MAE_test': [test_mae], 'MAE_test_std': [test_mae_std]},
+         'r2_test': [test_r2], 'rpear2_test': [test_rpear2],
+         'MAE_test': [test_mae]},
         index=[data_str])
     df_res.to_pickle(df_res_out_file)
 
