@@ -317,8 +317,10 @@ def residualize_group_data(signals, confounds):
     returns residualized_signals.shape: subjects x n_data_points
     '''
     from nilearn.signal import clean
-    residualized_signals = clean(signals, detrend=False, standardize=False, confounds=confounds, low_pass=None,
-                                 high_pass=None, t_r=None)
+    import numpy as np
+    counfounds_plus_constant = np.concatenate((confounds, np.ones((confounds.shape[0], 1))), axis=1)
+    residualized_signals = clean(signals, detrend=False, standardize=False, confounds=counfounds_plus_constant,
+                                 low_pass=None, high_pass=None, t_r=None)
     return residualized_signals
 
 
