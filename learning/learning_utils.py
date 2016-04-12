@@ -117,11 +117,13 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     confounds = df[['mean_FD_P']].values
 
     ind = range(X.shape[0])
+    # fixme add stratify=y
     X_train, X_test, y_train, y_test, \
     confounds_train, confounds_test, ind_train, ind_test = train_test_split(
         X, y,
         confounds,
         ind,
+        stratify=y,
         test_size=0.5,
         random_state=666)
     df.ix[ind_train, ['split_group']] = 'train'
@@ -266,10 +268,13 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         random_motion_r2 = r2_score(y_predicted_random_motion, y_random_motion)
         random_motion_mae = mean_absolute_error(y_predicted_random_motion, y_random_motion)
 
-        cv = ShuffleSplit(X_train.shape[0], n_iter=10, test_size=0.2)
-        cv_score = cross_val_score(pipe, X_train, y_train, cv=cv)  # , n_jobs=10
-        cv_r2_mean = cv_score.mean()
-        cv_r2_std = cv_score.std()
+        # fixme
+        cv_r2_mean = np.nan
+        cv_r2_std = np.nan
+        # cv = ShuffleSplit(X_train.shape[0], n_iter=10, test_size=0.2)
+        # cv_score = cross_val_score(pipe, X_train, y_train, cv=cv)  # , n_jobs=10
+        # cv_r2_mean = cv_score.mean()
+        # cv_r2_std = cv_score.std()
 
     title_str = 'r2: {:.3f} MAE:{:.3f}'.format(test_r2, test_mae)
     scatter_file = pred_real_scatter(y_test, y_predicted, title_str, data_str)
