@@ -162,7 +162,8 @@ def learning_predict_data_wf(working_dir,
                                                         'model_out_file',
                                                         'df_res_out_file',
                                                         'scatter_file_no_motion',
-                                                        'scatter_file_random_motion'],
+                                                        'scatter_file_random_motion',
+                                                        'tuning_curve_file'],
                                           function=run_prediction_split_fct),
                             name='prediction_split')
 
@@ -202,6 +203,7 @@ def learning_predict_data_wf(working_dir,
                     wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
                     wf.connect(the_in_node, 'scatter_file_no_motion', ds_pdf, the_out_node_str + 'scatter_motion.@no_mo')
                     wf.connect(the_in_node, 'scatter_file_random_motion', ds_pdf, the_out_node_str + 'scatter_motion.@rand_mo')
+                    wf.connect(the_in_node, 'tuning_curve_file', ds_pdf, the_out_node_str + 'tuning_curve_file')
 
                     if not strat:  # backprojection with strat split is not possible, becaus no estimator is estimated
                         # BACKPROJECT PREDICTION WEIGHTS

@@ -200,10 +200,6 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         test_r2 = r2_score(y_test, y_predicted)
         test_rpear2 = np.corrcoef(y_test, y_predicted)[0, 1]
 
-
-
-
-
     else:
         pipe = pipeline
 
@@ -296,6 +292,39 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     df.to_pickle(df_use_file)
 
 
+    #########
+    # TUNING CURVES
+    from sklearn.learning_curve import validation_curve
+    from sklearn.cross_validation import StratifiedKFold
+    import pylab as plt
+    strat_k_fold = StratifiedKFold(df['age_bins'].values, n_folds=2)
+    param_range = np.logspace(-3, 3, num=12)
+    train_scores, test_scores = validation_curve(pipe, X, y, param_name="regression_model__C", param_range=param_range,
+                                                 cv=strat_k_fold, n_jobs=10)
+    # plot
+    # http://scikit-learn.org/stable/auto_examples/model_selection/plot_validation_curve.html#example-model-selection-plot-validation-curve-py
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+    plt.figure()
+    plt.title("Validation Curve")
+    plt.xlabel("$\gamma$")
+    plt.ylabel("Score")
+    plt.ylim(0.0, 1.1)
+    plt.semilogx(param_range, train_scores_mean, label="Training score", color="r")
+    plt.fill_between(param_range, train_scores_mean - train_scores_std, train_scores_mean + train_scores_std, alpha=0.2,
+                     color="r")
+    plt.semilogx(param_range, test_scores_mean, label="Cross-validation score", color="g")
+    plt.fill_between(param_range, test_scores_mean - test_scores_std, test_scores_mean + test_scores_std, alpha=0.2,
+                     color="g")
+    plt.legend(loc="best")
+
+    tuning_curve_file = os.path.join(os.getcwd(), 'tuning_curve_' + data_str + '.pdf')
+    plt.savefig(tuning_curve_file)
+    plt.close()
+    #plt.show()
+
 
     # performace results df
     df_res_out_file = os.path.abspath(data_str + '_df_results.pkl')
@@ -310,7 +339,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     with open(model_out_file, 'w') as f:
         pickle.dump(pipe, f)
     return scatter_file, brain_age_scatter_file, df_use_file, model_out_file, df_res_out_file, \
-           scatter_file_no_motion, scatter_file_random_motion
+           scatter_file_no_motion, scatter_file_random_motion, tuning_curve_file
 
 
 def residualize_group_data(signals, confounds):

@@ -100,21 +100,35 @@ subjects_selection_crit_dict['bothSexes_neuH'] = ["n_TRs > 294", "neurol_healthy
 #                      ['craddock_205_BP_scr05'], ['craddock_788_BP_scr05'], ['gordon_BP_scr05'],
 #                      ['msdl_abide_BP']]
 
+# in_data_name_list = [
+#     ['dosenbach'],
+#     ['basc_197'], ['basc_444'],
+#     ['craddock_205_BP'],
+#     ['craddock_788_BP'],
+#     ['craddock_205_BP_scr05'], ['craddock_788_BP_scr05'],
+#     ['msdl_abide_BP'],
+#
+#     ['lh_ct_fsav5_sm0', 'rh_ct_fsav5_sm0'],
+#     ['lh_csa_fsav5_sm0', 'rh_csa_fsav5_sm0'],
+#     ['aseg'],
+#     ['lh_ct_fsav5_sm0', 'rh_ct_fsav5_sm0', 'lh_csa_fsav5_sm0', 'rh_csa_fsav5_sm0', 'aseg'],
+#
+# ]
+
 in_data_name_list = [
     ['dosenbach'],
     ['basc_197'], ['basc_444'],
     ['craddock_205_BP'],
     ['craddock_788_BP'],
-    ['craddock_205_BP_scr05'], ['craddock_788_BP_scr05'],
-    ['msdl_abide_BP'],
-
     ['lh_ct_fsav5_sm0', 'rh_ct_fsav5_sm0'],
     ['lh_csa_fsav5_sm0', 'rh_csa_fsav5_sm0'],
     ['aseg'],
-    ['lh_ct_fsav5_sm0', 'rh_ct_fsav5_sm0', 'lh_csa_fsav5_sm0', 'rh_csa_fsav5_sm0', 'aseg'],
-
 ]
 
+#fixme
+in_data_name_list = [
+    ['aseg'],
+]
 subjects_selection_crit_names_list = ['bothSexes_neuH']
 
 target_list = ['age']
