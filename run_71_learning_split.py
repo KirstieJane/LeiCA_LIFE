@@ -15,7 +15,7 @@ working_dir = os.path.join(wd_root_path, 'wd_learning')
 ds_dir = os.path.join(ds_root_path, 'learning_out')
 aggregated_subjects_dir = os.path.join(ds_dir, 'vectorized_aggregated_data')
 
-use_n_procs = 50
+use_n_procs = 45
 plugin_name = 'MultiProc'
 
 # in_data_name_list = [['falff_z_GM_WM_3mm_sm0'],['behav_wml_wmh_norm_ln']]
@@ -30,6 +30,6 @@ learning_predict_data_wf(working_dir=working_dir,
                          use_n_procs=use_n_procs,
                          plugin_name=plugin_name,
                          scaler=['standard'],
-                         rfe=[False, True],
+                         rfe=[False],#[False, True],
                          strat_split=[False, True],
                          confound_regression=[False, True])

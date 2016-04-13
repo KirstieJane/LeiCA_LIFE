@@ -151,7 +151,7 @@ template_lookup_dict = {
     'brain_mask_MNI_3mm_frauke': 'Templates/Frauke_Templates/MNI_resampled_brain_mask.nii'
 }
 
-for res in [3, 4, 8]:
+for res in [1, 2, 3, 4, 8]:
     for img in ['GM', 'WM', 'GM_WM', 'brain_mask']:
         k = img + '_MNI_' + str(res) + 'mm'
         v = 'MNI152_T1_' + str(res) + 'mm_' + img + '.nii.gz'
