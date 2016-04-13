@@ -15,8 +15,9 @@ ds_dir = os.path.join(ds_root_path, 'learning_out')
 
 use_n_procs = 1
 plugin_name = 'MultiProc'
-#fixme
-#in_data_name_list = [['falff_z_GM_WM_3mm_sm0'],['behav_wml_wmh_norm_ln']]
+
+# fixme
+in_data_name_list = [['dosenbach'], ['basc_197'], ['basc_444']]
 
 learning_prepare_data_wf(working_dir=working_dir,
                          ds_dir=ds_dir,
