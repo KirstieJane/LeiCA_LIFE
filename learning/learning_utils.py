@@ -297,7 +297,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     from sklearn.learning_curve import validation_curve
     from sklearn.cross_validation import StratifiedKFold
     import pylab as plt
-    strat_k_fold = StratifiedKFold(df['age_bins'].values, n_folds=2)
+    strat_k_fold = StratifiedKFold(df['age_bins'].values, n_folds=10)
     param_range = np.logspace(-3, 3, num=12)
     train_scores, test_scores = validation_curve(pipe, X, y, param_name="regression_model__C", param_range=param_range,
                                                  cv=strat_k_fold, n_jobs=10)
