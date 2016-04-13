@@ -117,13 +117,17 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     confounds = df[['mean_FD_P']].values
 
     ind = range(X.shape[0])
-    # fixme add stratify=y
+
+    # split with age stratification
+    n_age_bins = 10
+    df['age_bins'] = pd.cut(df['age'], n_age_bins, labels=range(n_age_bins))
+
     X_train, X_test, y_train, y_test, \
     confounds_train, confounds_test, ind_train, ind_test = train_test_split(
         X, y,
         confounds,
         ind,
-        stratify=y,
+        stratify=df['age_bins'].values,
         test_size=0.5,
         random_state=666)
     df.ix[ind_train, ['split_group']] = 'train'
