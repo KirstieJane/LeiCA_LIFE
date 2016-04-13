@@ -119,7 +119,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     ind = range(X.shape[0])
 
     # split with age stratification
-    n_age_bins = 20
+    n_age_bins =17
     df['age_bins'] = pd.cut(df['age'], n_age_bins, labels=range(n_age_bins))
 
     X_train, X_test, y_train, y_test, \
