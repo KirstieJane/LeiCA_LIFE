@@ -18,13 +18,17 @@ bp_freq_list = [(0.01, 0.1)]
 TR = 2.0
 
 parcellations_dict = {}
-parcellations_dict['basc_444'] = {
+# parcellations_dict['basc_444'] = {
+#     'nii_path': os.path.join(template_dir,
+#                              'basc_multiscale_2015/template_cambridge_basc_multiscale_nii_sym/template_cambridge_basc_multiscale_sym_scale444.nii.gz'),
+#     'is_probabilistic': False}
+parcellations_dict['basc_197'] = {
     'nii_path': os.path.join(template_dir,
-                             'basc_multiscale_2015/template_cambridge_basc_multiscale_nii_sym/template_cambridge_basc_multiscale_sym_scale444.nii.gz'),
+                             'basc_multiscale_2015/template_cambridge_basc_multiscale_nii_sym/template_cambridge_basc_multiscale_sym_scale197.nii.gz'),
     'is_probabilistic': False}
 
 use_n_procs = 5
-# plugin_name = 'MultiProc'
+#plugin_name = 'MultiProc'
 plugin_name = 'CondorDAGMan'
 
 for subject_id in subjects_list:

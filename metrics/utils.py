@@ -33,14 +33,21 @@ def extract_parcellation_time_series(in_data, parcellation_name, parcellations_d
     returns np.array with parcellation time series and saves this array also to parcellation_time_series_file, and
     path to pickled masker object
     '''
-    from nilearn.input_data import NiftiLabelsMasker, NiftiMapsMasker
+    from nilearn.input_data import NiftiLabelsMasker, NiftiMapsMasker, NiftiSpheresMasker
     import os, pickle
     import numpy as np
 
-    if parcellations_dict[parcellation_name]['is_probabilistic']:  # use probab. nilearn
+    if parcellations_dict[parcellation_name]['is_probabilistic'] == True:  # use probab. nilearn
         masker = NiftiMapsMasker(maps_img=parcellations_dict[parcellation_name]['nii_path'], standardize=True)
+
+    elif parcellations_dict[parcellation_name]['is_probabilistic'] == 'sphere':
+        atlas = pickle.load(open(parcellations_dict[parcellation_name]['nii_path']))
+        coords = atlas.rois
+        masker = NiftiSpheresMasker(coords, radius=5, allow_overlap=True, standardize=True)
+
     else:  # 0/1 labels
-        masker = NiftiLabelsMasker(labels_img=parcellations_dict[parcellation_name]['nii_path'], standardize=True)
+        masker = NiftiLabelsMasker(labels_img=parcellations_dict[parcellation_name]['nii_path'],
+                                   standardize=True)
 
     # add bandpass filter (only executes if freq not None
     hp, lp = bp_freqs
@@ -98,7 +105,6 @@ def calculate_connectivity_matrix(in_data, extraction_method):
     return matrix, matrix_file
 
 
-
 def get_good_trs(fd_file, fd_thresh):
     import os, numpy as np
 
@@ -108,6 +114,7 @@ def get_good_trs(fd_file, fd_thresh):
     fd_scrubbed_file = os.path.abspath(os.path.basename(fd_file) + '_scrubbed_%.1f' % fd_thresh)
     np.savetxt(fd_scrubbed_file, fd_scrubbed)
     return good_trs, fd_scrubbed_file
+
 
 def parcellation_time_series_scrubbing(parcellation_time_series_file, good_trs):
     import os, numpy as np
