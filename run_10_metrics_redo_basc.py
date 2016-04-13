@@ -31,10 +31,6 @@ use_n_procs = 5
 #plugin_name = 'MultiProc'
 plugin_name = 'CondorDAGMan'
 
-#fixme
-from utils import load_subjects_list
-subjects_list = load_subjects_list('/scr/adenauer2/Franz/LIFE16/basc.txt')
-
 for subject_id in subjects_list:
     working_dir = os.path.join(working_dir_base, subject_id)
     ds_dir = os.path.join(ds_dir_base, subject_id)
