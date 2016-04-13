@@ -160,7 +160,9 @@ def learning_predict_data_wf(working_dir,
                                                         'brain_age_scatter_file',
                                                         'df_use_file',
                                                         'model_out_file',
-                                                        'df_res_out_file'],
+                                                        'df_res_out_file',
+                                                        'scatter_file_no_motion',
+                                                        'scatter_file_random_motion'],
                                           function=run_prediction_split_fct),
                             name='prediction_split')
 
@@ -178,7 +180,7 @@ def learning_predict_data_wf(working_dir,
         for r in rfe:
             for strat in strat_split:
                 for reg in confound_regression:
-                    the_out_node_str = '%02d_scaler_%s_rfe_%s_strat_%s_reg_%s_' % (i, s, r, strat, reg)
+                    the_out_node_str = 'scaler_%s_rfe_%s_strat_%s_reg_%s_' % (s, r, strat, reg)
                     prediction_node_dict[i] = prediction_split.clone(the_out_node_str)
                     the_in_node = prediction_node_dict[i]
                     the_in_node.inputs.use_grid_search = False
@@ -198,12 +200,14 @@ def learning_predict_data_wf(working_dir,
                     wf.connect(the_in_node, 'brain_age_scatter_file', ds_pdf, the_out_node_str + 'brain_age_scatter')
                     wf.connect(the_in_node, 'df_use_file', ds_pdf, the_out_node_str + 'predicted')
                     wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
+                    wf.connect(the_in_node, 'scatter_file_no_motion', ds_pdf, the_out_node_str + 'scatter_motion.@no_mo')
+                    wf.connect(the_in_node, 'scatter_file_random_motion', ds_pdf, the_out_node_str + 'scatter_motion.@rand_mo')
 
                     if not strat:  # backprojection with strat split is not possible, becaus no estimator is estimated
                         # BACKPROJECT PREDICTION WEIGHTS
                         # map weights back to single modality original format (e.g., nifti or matrix)
-                        the_out_node_str = 'backprojection_%02d_scaler_%s_rfe_%s_strat_%s_reg_%s_' % (
-                            i, s, r, strat, reg)
+                        the_out_node_str = 'backprojection_scaler_%s_rfe_%s_strat_%s_reg_%s_' % (
+                            s, r, strat, reg)
                         backprojection_node_dict[i] = backproject_and_split_weights.clone(the_out_node_str)
                         the_from_node = prediction_node_dict[i]
                         the_in_node = backprojection_node_dict[i]
