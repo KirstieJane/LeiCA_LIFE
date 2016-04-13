@@ -134,7 +134,18 @@ data_lookup_dict['msdl_abide_BP'] = {'matrix_name': 'correlation',
                                                               'con_mat/matrix/bp_0.01.0.1/msdl_abide/matrix.pkl'),
                                      'use_diagonal': True}
 
+# Dosenbach
+data_lookup_dict['dosenbach'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
+                                 'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                          'con_mat/matrix/bp_0.01.0.1/dosenbach/matrix.pkl')}
 
+# BASC
+data_lookup_dict['basc_197'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
+                                'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                         'con_mat/matrix/bp_0.01.0.1/basc_197/matrix.pkl')}
+data_lookup_dict['basc_444'] = {'matrix_name': 'correlation', 'use_fishers_z': True,
+                                'path_str': os.path.join(metrics_root_path, 'metrics/{subject_id}',
+                                                         'con_mat/matrix/bp_0.01.0.1/basc_444/matrix.pkl')}
 # BEHAV
 data_lookup_dict['behav_wml_wm_total'] = {'df_col_names': ['WM_gesamt'],
                                           'path_str': '{subject_id}'}  # path_str for compatibilty
