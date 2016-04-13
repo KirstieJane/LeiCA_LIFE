@@ -31,5 +31,5 @@ learning_predict_data_wf(working_dir=working_dir,
                          plugin_name=plugin_name,
                          scaler=['standard'],
                          rfe=[False],#[False, True],
-                         strat_split=[False, True],
-                         confound_regression=[False, True])
+                         strat_split=[False], #[False, True],
+                         confound_regression=[False]) #[False, True])
