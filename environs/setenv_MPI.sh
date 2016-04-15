@@ -1,7 +1,7 @@
 #!/bin/sh
 
 
-PYTHONPATH=${PYTHONPATH}:/home/raid2/liem/PowerTemp/:/home/raid2/liem/PowerFolders/Workspace:/home/raid2/liem/PowerFolders/Workspace/LeiCA_LIFE:/home/raid2/liem/PowerFolders/Workspace/LeiCA_LIFE/optunity/
+PYTHONPATH=${PYTHONPATH}:/home/raid2/liem/PowerFolders/Workspace:/home/raid2/liem/PowerFolders/Workspace/LeiCA_LIFE:/home/raid2/liem/PowerFolders/Workspace/LeiCA_LIFE/optunity/
 #:/home/raid2/liem/PowerFolders/Workspace/Bayesian-Regression-Methods/Relevance\ Vector\ Machine\ \&\ ARD/
 export PYTHONPATH
 
