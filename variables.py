@@ -13,7 +13,7 @@ subjects_list_folder = '/home/raid2/liem/data/LIFE/behavioral'
 
 subject_file = '/scr/adenauer2/Franz/LIFE16/LIFE16_preprocessed_subjects_list_n2557.txt'
 
-behav_file = '/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_behav_n2636.pkl'
+behav_file = '/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_behav_n2623.pkl'
 qc_file = '/home/raid2/liem/data/LIFE/behavioral/LIFE_subjects_QC_n2557.pkl'
 
 subjects_list = load_subjects_list(subject_file)

@@ -141,9 +141,9 @@ add_prov(df_stroop, 'PV0250_T00926.xlsx')
 df_stroop = create_multi_index(df_stroop)
 
 df_stroop = df_stroop[['STROOP_RT_NEUTRAL', 'STROOP_PC_NEUTRAL', 'STROOP_RT_INKON', 'STROOP_TIMEOUT_INKON',
-                        'STROOP_TIMEOUT_NEUTRAL', 'STROOP_PC_INKON']]
+                       'STROOP_TIMEOUT_NEUTRAL', 'STROOP_PC_INKON']]
 df = df.join(df_stroop, how='left')
-#df_big = df_big.join(df_stroop, how='left', lsuffix='1', rsuffix='2')
+# df_big = df_big.join(df_stroop, how='left', lsuffix='1', rsuffix='2')
 df_big = df_big.join(df_stroop, how='left')
 
 
@@ -188,11 +188,32 @@ df_lesvol['wmh_ln'] = np.log(df_lesvol['wmh'] + 1)
 
 df = df.join(df_lesvol[['WM_gesamt', 'wmh', 'wmh_ln', 'wmh_norm', 'wmh_norm_ln']], how='left')
 
+
+# DROP SUBJECTS WITHOU FS TAB
+bad_subj = ['LI01371995',
+            'LI00104318',
+            'LI02167432',
+            'LI03180515',
+            'LI02221211',
+            'LI0175257X',
+            'LI03393297',
+            'LI01647059',
+            'LI03671610',
+            'LI03511532',
+            'LI03467212',
+            'LI0300607X',
+            'LI0049109X']
+for bad in bad_subj:
+    if bad in df.index:
+        df.drop(bad, inplace=True)
+
 n['post befund'] = len(df)
 n['neurol healthy'] = len(df.query('neurol_healthy'))
 
 print('N SUBJECTS')
 print(n)
+
+
 
 
 # add more to big
