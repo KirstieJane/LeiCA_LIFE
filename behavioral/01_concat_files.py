@@ -220,6 +220,8 @@ df_cs['cs_mean_group'] = ''
 df_cs.ix[(df_cs.cs_mean_z > -1), 'cs_mean_group'] = 'norm'
 df_cs.ix[((df_cs.cs_mean_z < -1) & (df_cs.cs_mean_z > -2)), 'cs_mean_group'] = 'mild'
 df_cs.ix[(df_cs.cs_mean_z < -2), 'cs_mean_group'] = 'major'
+df_cs['cs_mean_group_int'] = df_cs['cs_mean_group'].replace({'norm': 0, 'mild': 1, 'major':2})
+
 df_cs.drop(['Geschlecht', 'MRT_DATUM', 'MRT_GRUPPE', 'GRP','t_days', 'age'], axis=1, inplace=True)
 df = df.join(df_cs, how='left')
 
