@@ -74,7 +74,8 @@ def select_multimodal_X_fct(X_multimodal_file, subjects_selection_index):
 # PREDICTION
 # and helpers for residualizing and plotting
 def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, data_str, regress_confounds=False,
-                             use_grid_search=False, scaler='standard', rfe=False, strat_split=False):
+                             use_grid_search=False, scaler='standard', rfe=False, strat_split=False, run_cv=False,
+                             n_jobs_cv=1, run_tuning=False):
     import os, pickle
     import numpy as np
     import pandas as pd
@@ -93,9 +94,9 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     from sklearn.feature_selection import SelectKBest, f_regression
     data_str = target_name + '__' + selection_criterium + '__' + data_str
 
-    variables = ['train_mae', 'train_r2', 'cv_r2_mean', 'cv_r2_std', 'no_motion_r2', 'random_motion_r2',
+    variables = ['train_mae', 'train_r2', 'cv_r2', 'cv_mae', 'cv_r2_mean', 'cv_r2_std', 'no_motion_r2', 'random_motion_r2',
                  'no_motion_mae', 'random_motion_mae', 'y_no_motion', 'y_random_motion', 'y_predicted_no_motion',
-                 'y_predicted_random_motion']
+                 'y_predicted_random_motion', 'y_predicted_cv']
     for v in variables:
         try:
             exec (v)
@@ -119,7 +120,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     ind = range(X.shape[0])
 
     # split with age stratification
-    n_age_bins =17
+    n_age_bins = 20
     df['age_bins'] = pd.cut(df['age'], n_age_bins, labels=range(n_age_bins))
 
     X_train, X_test, y_train, y_test, \
@@ -143,7 +144,12 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     var_thr = VarianceThreshold()
     normalize = StandardScaler()
 
-    regression_model = SVR(kernel='linear', cache_size=1000)
+    # fixme
+    if 'aseg' in data_str:
+        C = 1
+    else:
+        C = 10 ** -3
+    regression_model = SVR(kernel='linear', C=C, cache_size=1000)
     pipeline_list = [('fill_missing', fill_missing),
                      ('var_thr', var_thr),
                      ('normalize', normalize)]
@@ -158,126 +164,99 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
 
     pipeline_list.append(('regression_model', regression_model))
 
-    pipeline = Pipeline(pipeline_list)
+    pipe = Pipeline(pipeline_list)
 
-    if strat_split:
-        # n_bins = 10
-        # df['mean_FD_P_bins'] = pd.cut(df['mean_FD_P'], n_bins, labels=range(n_bins))
-        # cv = StratifiedShuffleSplit(df['mean_FD_P_bins'].values, 10, test_size=0.5, random_state=0)
-        # pipe.fit(X, y, cv=cv)
-        # r2 = cross_val_score(pipe, X, y, cv=cv, scoring='r2')
-        # mae = cross_val_score(pipe, X, y, cv=cv, scoring='mean_absolute_error')
-        from sklearn.ensemble import BaggingRegressor
-        n_bins = 10
-        df['mean_FD_P_bins'] = pd.cut(df['mean_FD_P'], n_bins, labels=range(n_bins))
-        cv = StratifiedShuffleSplit(df['mean_FD_P_bins'].values, 2, test_size=0.5, random_state=0)
-        ind_train = cv.y == 0
-        X_train = X[ind_train, :]
-        y_train = y[ind_train]
-        confounds_train = confounds[ind_train]
+    # FIT MODEL
+    pipe.fit(X_train, y_train)
+    y_predicted_train = pipe.predict(X_train)
+    y_predicted = pipe.predict(X_test)
 
-        ind_test = cv.y == 1
-        X_test = X[ind_test, :]
-        y_test = y[ind_test]
-        confounds_test = confounds[ind_test]
+    df.ix[ind_train, ['pred_age_train']] = y_predicted_train
+    df.ix[ind_test, ['pred_age_test']] = y_predicted
 
-        df.ix[ind_train, ['split_group']] = 'train'
-        df.ix[ind_test, ['split_group']] = 'test'
+    test_mae = mean_absolute_error(y_test, y_predicted)
+    test_r2 = r2_score(y_test, y_predicted)
+    test_rpear2 = np.corrcoef(y_test, y_predicted)[0, 1]
 
-        # REGRESS OUT CONFOUNDS IF NEEDED
-        if regress_confounds:
-            X_train = residualize_group_data(X_train, confounds_train)
-            X_test = residualize_group_data(X_test, confounds_test)
-
-        pipe = BaggingRegressor(base_estimator=pipeline, n_estimators=10, max_samples=.75)
-        pipe.fit(X_train, y_train)
-        y_predicted = pipe.predict(X_test)
-
-        df.ix[ind_train, ['pred_age_train']] = np.nan
-        df.ix[ind_test, ['pred_age_test']] = y_predicted
-
-        test_mae = mean_absolute_error(y_test, y_predicted)
-        test_r2 = r2_score(y_test, y_predicted)
-        test_rpear2 = np.corrcoef(y_test, y_predicted)[0, 1]
-
-    else:
-        pipe = pipeline
-
-        pipe.fit(X_train, y_train)
-        y_predicted_train = pipe.predict(X_train)
-        y_predicted = pipe.predict(X_test)
-
-        df.ix[ind_train, ['pred_age_train']] = y_predicted_train
-        df.ix[ind_test, ['pred_age_test']] = y_predicted
-
-        test_mae = mean_absolute_error(y_test, y_predicted)
-        test_r2 = r2_score(y_test, y_predicted)
-        test_rpear2 = np.corrcoef(y_test, y_predicted)[0, 1]
-
-        train_mae = mean_absolute_error(y_train, y_predicted_train)
-        train_r2 = r2_score(y_train, y_predicted_train)
+    train_mae = mean_absolute_error(y_train, y_predicted_train)
+    train_r2 = r2_score(y_train, y_predicted_train)
 
 
 
 
-        #### Motion equal age groups
-        df['no_motion_grp'] = False
-        df.loc[
-            (df['mean_FD_P'] > .17) & (df['mean_FD_P'] < 0.27) & (df['split_group'] == 'test'), 'no_motion_grp'] = True
-        no_motion = df.query('no_motion_grp')
+    #### Prediction in motion equal age groups
+    # select a group lacking age motion correlation by restricting FD between .17 and .27
+    # and randomly selected sample of same size (keeping motion age correlation)
+    # only taking age>25 (makes matching with motion group easier)
+    df['no_motion_grp'] = False
+    df.loc[
+        (df['age'] > 25) & (df['mean_FD_P'] > .17) & (df['mean_FD_P'] < 0.27) & (
+        df['split_group'] == 'test'), 'no_motion_grp'] = True
+    no_motion = df.query('no_motion_grp')
 
-        n_bins = 30
-        df['age_bins'] = pd.cut(df['age'], n_bins, labels=range(n_bins))
-        no_motion = df.query('no_motion_grp')
+    all_test_ind = np.where(np.logical_and(df.split_group == 'test', df['age'] > 25))[0]
+    rand_sel_test_ind = all_test_ind.copy()
+    np.random.shuffle(rand_sel_test_ind)
+    rand_sel_test_ind = rand_sel_test_ind[:len(no_motion)]
+    df['random_motion_grp'] = False
+    df.ix[rand_sel_test_ind, 'random_motion_grp'] = True
 
-        # sns.barplot('age_bins', 'mean_FD_P', data=no_motion);
-        # plt.show()
+    df['pred_age_no_motion'] = np.nan
+    df['pred_age_random_motion'] = np.nan
 
-        all_test_ind = np.where(df.split_group == 'test')[0]
-        rand_sel_test_ind = all_test_ind.copy()
-        np.random.shuffle(rand_sel_test_ind)
-        rand_sel_test_ind = rand_sel_test_ind[:len(no_motion)]
-        df['random_motion_grp'] = False
-        df.ix[rand_sel_test_ind, 'random_motion_grp'] = True
+    # pred
+    no_motion_ind = []
+    for s in df[df.no_motion_grp].index:
+        no_motion_ind.append(df.index.get_loc(s))
 
-        df['pred_age_no_motion'] = np.nan
-        df['pred_age_random_motion'] = np.nan
+    X_no_motion = X[no_motion_ind, :]
+    y_no_motion = y[no_motion_ind]
+    y_predicted_no_motion = pipe.predict(X_no_motion)
+    df.ix[no_motion_ind, ['pred_age_no_motion']] = y_predicted_no_motion
 
-        # pred
-        no_motion_ind = []
-        for s in df[df.no_motion_grp].index:
-            no_motion_ind.append(df.index.get_loc(s))
+    random_motion_ind = []
+    for s in df[df.random_motion_grp].index:
+        random_motion_ind.append(df.index.get_loc(s))
 
-        X_no_motion = X[no_motion_ind, :]
-        y_no_motion = y[no_motion_ind]
-        y_predicted_no_motion = pipe.predict(X_no_motion)
-        df.ix[no_motion_ind, ['pred_age_no_motion']] = y_predicted_no_motion
+    X_random_motion = X[random_motion_ind, :]
+    y_random_motion = y[random_motion_ind]
+    y_predicted_random_motion = pipe.predict(X_random_motion)
+    df.ix[random_motion_ind, ['pred_age_random_motion']] = y_predicted_random_motion
 
-        random_motion_ind = []
-        for s in df[df.random_motion_grp].index:
-            random_motion_ind.append(df.index.get_loc(s))
+    no_motion_r2 = r2_score(y_no_motion, y_predicted_no_motion)
+    no_motion_mae = mean_absolute_error(y_no_motion, y_predicted_no_motion)
 
-        X_random_motion = X[random_motion_ind, :]
-        y_random_motion = y[random_motion_ind]
-        y_predicted_random_motion = pipe.predict(X_random_motion)
-        df.ix[random_motion_ind, ['pred_age_random_motion']] = y_predicted_random_motion
+    random_motion_r2 = r2_score(y_random_motion, y_predicted_random_motion)
+    random_motion_mae = mean_absolute_error(y_random_motion, y_predicted_random_motion)
 
-        no_motion_r2 = r2_score(y_predicted_no_motion, y_no_motion)
-        no_motion_mae = mean_absolute_error(y_predicted_no_motion, y_no_motion)
 
-        random_motion_r2 = r2_score(y_predicted_random_motion, y_random_motion)
-        random_motion_mae = mean_absolute_error(y_predicted_random_motion, y_random_motion)
+    df['y_predicted_cv'] = np.nan
+    if run_cv:
+        from sklearn.cross_validation import StratifiedKFold
+        strat_k_fold = StratifiedKFold(df['age_bins'].values[ind_train], n_folds=10, shuffle=True, random_state=0)
+        # crossval predict and manually calc. cv score to get y_cv_predicted
+        # cv_score_ = cross_val_score(pipe, X_train, y_train, cv=strat_k_fold, n_jobs=n_jobs_cv)  #
+        y_predicted_cv = cross_val_predict(pipe, X_train, y_train, cv=strat_k_fold, n_jobs=n_jobs_cv)
+        df.ix[ind_train, ['y_predicted_cv']] = y_predicted_cv
 
-        # fixme
-        cv_r2_mean = np.nan
-        cv_r2_std = np.nan
-        # cv = ShuffleSplit(X_train.shape[0], n_iter=10, test_size=0.2)
-        # cv_score = cross_val_score(pipe, X_train, y_train, cv=cv)  # , n_jobs=10
-        # cv_r2_mean = cv_score.mean()
-        # cv_r2_std = cv_score.std()
+        cv_r2 = []
+        cv_mae = []
+        for k_train, k_test in strat_k_fold:
+            cv_r2.append(r2_score(y_train[k_test], y_predicted_cv[k_test]))
+            cv_mae.append(mean_absolute_error(y_train[k_test], y_predicted_cv[k_test]))
+        cv_r2_mean = np.mean(cv_r2)
+        cv_r2_std = np.std(cv_r2)
 
+
+    # SCATTER PLOTS
     title_str = 'r2: {:.3f} MAE:{:.3f}'.format(test_r2, test_mae)
     scatter_file = pred_real_scatter(y_test, y_predicted, title_str, data_str)
+
+    if run_cv:
+        title_str = 'r2: {:.3f}({:.3f}) MAE:{:.3f}({:.3f})'.format(cv_r2_mean, cv_r2_std, np.mean(cv_mae), np.std(cv_mae))
+        scatter_file_cv = pred_real_scatter(y_train, y_predicted_cv, title_str, data_str, post_str='_cv')
+    else:
+        scatter_file_cv = scatter_file
 
     title_str = 'r2: {:.3f} MAE:{:.3f}'.format(no_motion_r2, no_motion_mae)
     scatter_file_no_motion = pred_real_scatter(y_no_motion, y_predicted_no_motion, title_str, data_str,
@@ -292,46 +271,50 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     df.to_pickle(df_use_file)
 
 
-    #########
-    # TUNING CURVES
-    from sklearn.learning_curve import validation_curve
-    from sklearn.cross_validation import StratifiedKFold
-    import pylab as plt
-    strat_k_fold = StratifiedKFold(df['age_bins'].values, n_folds=10)
-    param_range = np.logspace(-3, 3, num=12)
-    train_scores, test_scores = validation_curve(pipe, X, y, param_name="regression_model__C", param_range=param_range,
-                                                 cv=strat_k_fold, n_jobs=10)
-    # plot
-    # http://scikit-learn.org/stable/auto_examples/model_selection/plot_validation_curve.html#example-model-selection-plot-validation-curve-py
-    train_scores_mean = np.mean(train_scores, axis=1)
-    train_scores_std = np.std(train_scores, axis=1)
-    test_scores_mean = np.mean(test_scores, axis=1)
-    test_scores_std = np.std(test_scores, axis=1)
-    plt.figure()
-    plt.title("Validation Curve")
-    plt.xlabel("$\gamma$")
-    plt.ylabel("Score")
-    plt.ylim(0.0, 1.1)
-    plt.semilogx(param_range, train_scores_mean, label="Training score", color="r")
-    plt.fill_between(param_range, train_scores_mean - train_scores_std, train_scores_mean + train_scores_std, alpha=0.2,
-                     color="r")
-    plt.semilogx(param_range, test_scores_mean, label="Cross-validation score", color="g")
-    plt.fill_between(param_range, test_scores_mean - test_scores_std, test_scores_mean + test_scores_std, alpha=0.2,
-                     color="g")
-    plt.legend(loc="best")
+    if run_tuning:
+        # #############################################
+        # TUNING CURVES
+        from sklearn.learning_curve import validation_curve
+        from sklearn.cross_validation import StratifiedKFold
+        import pylab as plt
+        strat_k_fold = StratifiedKFold(df['age_bins'].values[ind_train], n_folds=10, shuffle=True, random_state=0)
+        param_range = np.logspace(-4, 0, num=12)
+        #fixme n_jobs
+        train_scores, test_scores = validation_curve(pipe, X_train, y_train, param_name="regression_model__C", param_range=param_range,
+                                                     cv=strat_k_fold, n_jobs=n_jobs_cv)
+        # plot
+        # http://scikit-learn.org/stable/auto_examples/model_selection/plot_validation_curve.html#example-model-selection-plot-validation-curve-py
+        train_scores_mean = np.mean(train_scores, axis=1)
+        train_scores_std = np.std(train_scores, axis=1)
+        test_scores_mean = np.mean(test_scores, axis=1)
+        test_scores_std = np.std(test_scores, axis=1)
+        plt.figure()
+        plt.title("Validation Curve")
+        plt.xlabel("C")
+        plt.ylabel("Score")
+        plt.ylim(0.0, 1.1)
+        plt.semilogx(param_range, train_scores_mean, label="Training score", color="r")
+        plt.fill_between(param_range, train_scores_mean - train_scores_std, train_scores_mean + train_scores_std, alpha=0.2,
+                         color="r")
+        plt.semilogx(param_range, test_scores_mean, label="Cross-validation score", color="g")
+        plt.fill_between(param_range, test_scores_mean - test_scores_std, test_scores_mean + test_scores_std, alpha=0.2,
+                         color="g")
+        plt.legend(loc="best")
 
-    tuning_curve_file = os.path.join(os.getcwd(), 'tuning_curve_' + data_str + '.pdf')
-    plt.savefig(tuning_curve_file)
-    plt.close()
-    #plt.show()
+        tuning_curve_file = os.path.join(os.getcwd(), 'tuning_curve_' + data_str + '.pdf')
+        plt.savefig(tuning_curve_file)
+        plt.close()
+        # #############################################
+    else:
+        tuning_curve_file = brain_age_scatter_file
 
 
     # performace results df
     df_res_out_file = os.path.abspath(data_str + '_df_results.pkl')
     df_res = pd.DataFrame(
         {'FD_res': regress_confounds, 'r2_train': [train_r2], 'MAE_train': [train_mae], 'r2_test': [test_r2],
-         'rpear2_test': [test_rpear2], 'MAE_test': [test_mae], 'cv_r2_mean': [cv_r2_mean], 'cv_r2_std': [cv_r2_std],
-         'no_motion_r2': [no_motion_r2], 'random_motion_r2': random_motion_r2},
+         'rpear2_test': [test_rpear2], 'MAE_test': [test_mae], 'cv_r2': [cv_r2], 'cv_r2_mean': [cv_r2_mean],
+         'cv_r2_std': [cv_r2_std], 'no_motion_r2': [no_motion_r2], 'random_motion_r2': random_motion_r2},
         index=[data_str])
     df_res.to_pickle(df_res_out_file)
 
@@ -339,7 +322,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     with open(model_out_file, 'w') as f:
         pickle.dump(pipe, f)
     return scatter_file, brain_age_scatter_file, df_use_file, model_out_file, df_res_out_file, \
-           scatter_file_no_motion, scatter_file_random_motion, tuning_curve_file
+           scatter_file_no_motion, scatter_file_random_motion, tuning_curve_file, scatter_file_cv
 
 
 def residualize_group_data(signals, confounds):
