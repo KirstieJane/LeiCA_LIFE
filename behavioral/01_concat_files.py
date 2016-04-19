@@ -12,6 +12,7 @@ Imports and concatenates behav files
 import pandas as pd
 import numpy as np
 import glob, os
+from scipy.stats.mstats import zscore
 from collections import OrderedDict
 
 behav_out_folder = '/Users/franzliem/PowerFolders/LIFE/behavioral'
@@ -160,8 +161,8 @@ df_befund = pd.read_csv('MRT_befund_daten.csv', na_values=999999)
 df_befund.dropna(axis=0, subset=['mri_lesion_num'], inplace=True)
 df_befund.rename(columns={'\xef\xbb\xbfSIC': 'SIC'}, inplace=True)
 df_befund.set_index('SIC', inplace=True)
-# Frauke: mri_lesion_num. Du solltest 2-5 und 999999 ausschließen, 0 und 1 sind ok
-#  ischemic, hemorraghic, both, traumatic (coded as 2-5), +missing (999999) lesions
+# Frauke: mri_lesion_num. Du solltest 2-5 und 999999 ausschliessen, 0 und 1 sind ok
+# ischemic, hemorraghic, both, traumatic (coded as 2-5), +missing (999999) lesions
 df_befund['neurol_healthy'] = False
 df_befund.loc[df_befund['mri_lesion_num'] <= 2, ['neurol_healthy']] = True
 df_befund['MRT_BefundFazekas'] = pd.to_numeric(df_befund.MRT_BefundFazekas, 'coerce')
@@ -171,8 +172,8 @@ df = df.join(df_befund[['MRT_BefundFazekas', 'mri_lesion_num', 'mri_tumors_num',
 
 # add lesion volume
 # WML_lesionload (gen_lesionload) ist der ausgegebene Wert von LesionTOADS
-# WML_lesionload_norm_tiv (gen_n) ist Läsionsvolumen normalisiert mit TIV
-# WML_lesionload_norm_tiv_ln (gen_n_ln) ist das transformierte Läsionsvolumen, damit es normalverteilt ist (falls du mit parametrischen Tests arbeitest)
+# WML_lesionload_norm_tiv (gen_n) ist Laesionsvolumen normalisiert mit TIV
+# WML_lesionload_norm_tiv_ln (gen_n_ln) ist das transformierte Laesionsvolumen, damit es normalverteilt ist (falls du mit parametrischen Tests arbeitest)
 # hier noch mal icv und wm_gesamt (das ist die gesamte white matter, also white matter + wmh)
 # general und wmh ist das gleiche.
 
@@ -206,6 +207,23 @@ bad_subj = ['LI01371995',
 for bad in bad_subj:
     if bad in df.index:
         df.drop(bad, inplace=True)
+
+# ADD COGNTIION SCORE
+df_cs = pd.read_csv('Jana_20160418/CogState_Alter_Geschlecht_20160418.csv', index_col=0, na_values=[99,999])
+# only use subjects with >3 valid domains
+df_cs = df_cs.query('N_valid_domains>3')
+df_cs['cs_mean'] = df_cs[['CS_attention', 'CS_executive', 'CS_memory', 'CS_viscon', 'CS_language','CS_fluency']].mean(1)
+df_cs['cs_mean_z'] = zscore(df_cs['cs_mean'])
+
+# group into norm, mild, major
+df_cs['cs_mean_group'] = ''
+df_cs.ix[(df_cs.cs_mean_z > -1), 'cs_mean_group'] = 'norm'
+df_cs.ix[((df_cs.cs_mean_z < -1) & (df_cs.cs_mean_z > -2)), 'cs_mean_group'] = 'mild'
+df_cs.ix[(df_cs.cs_mean_z < -2), 'cs_mean_group'] = 'major'
+df_cs.drop(['Geschlecht', 'MRT_DATUM', 'MRT_GRUPPE', 'GRP','t_days', 'age'], axis=1, inplace=True)
+df = df.join(df_cs, how='left')
+
+
 
 n['post befund'] = len(df)
 n['neurol healthy'] = len(df.query('neurol_healthy'))
@@ -251,9 +269,9 @@ df_excluded = df_all.drop(labels=df.index, axis=0)
 # df = df.join(df_old, how='right')
 #
 # corcol=['age', 'm', 'mean_FD_P']
-# df_ = df[corcol]
+# df = df[corcol]
 # from partial_corr import partial_corr
-# df_.corr()
+# df.corr()
 #
-# df_.dropna(inplace=True)
-# p = pd.DataFrame(partial_corr(df_), index=corcol, columns=corcol)
+# df.dropna(inplace=True)
+# p = pd.DataFrame(partial_corr(df), index=corcol, columns=corcol)
