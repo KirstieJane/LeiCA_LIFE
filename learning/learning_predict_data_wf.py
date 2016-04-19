@@ -10,7 +10,10 @@ def learning_predict_data_wf(working_dir,
                              scaler=['standard'],
                              rfe=[False, True],
                              strat_split=[False],
-                             confound_regression=[False, True]):
+                             confound_regression=[False, True],
+                             run_cv=False,
+                             n_jobs_cv=1,
+                             run_tuning=False):
     import os
     from nipype import config
     from nipype.pipeline.engine import Node, Workflow
@@ -155,7 +158,9 @@ def learning_predict_data_wf(working_dir,
                                                        'use_grid_search',
                                                        'scaler',
                                                        'rfe',
-                                                       'strat_split'],
+                                                       'strat_split',
+                                                       'run_cv',
+                                                       'n_jobs_cv'],
                                           output_names=['scatter_file',
                                                         'brain_age_scatter_file',
                                                         'df_use_file',
@@ -163,7 +168,8 @@ def learning_predict_data_wf(working_dir,
                                                         'df_res_out_file',
                                                         'scatter_file_no_motion',
                                                         'scatter_file_random_motion',
-                                                        'tuning_curve_file'],
+                                                        'tuning_curve_file',
+                                                        'scatter_file_cv'],
                                           function=run_prediction_split_fct),
                             name='prediction_split')
 
@@ -189,6 +195,9 @@ def learning_predict_data_wf(working_dir,
                     the_in_node.inputs.scaler = s
                     the_in_node.inputs.rfe = r
                     the_in_node.inputs.strat_split = strat
+                    the_in_node.inputs.run_cv = run_cv
+                    the_in_node.inputs.n_jobs_cv = n_jobs_cv
+                    the_in_node.inputs.run_tuning = run_tuning
 
                     wf.connect(select_multimodal_X, 'X_multimodal_selected_file', the_in_node, 'X_file')
                     wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
@@ -203,7 +212,8 @@ def learning_predict_data_wf(working_dir,
                     wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
                     wf.connect(the_in_node, 'scatter_file_no_motion', ds_pdf, the_out_node_str + 'scatter_motion.@no_mo')
                     wf.connect(the_in_node, 'scatter_file_random_motion', ds_pdf, the_out_node_str + 'scatter_motion.@rand_mo')
-                    wf.connect(the_in_node, 'tuning_curve_file', ds_pdf, the_out_node_str + 'tuning_curve_file')
+                    wf.connect(the_in_node, 'tuning_curve_file', ds_pdf, the_out_node_str + 'tuning_curve')
+                    wf.connect(the_in_node, 'scatter_file_cv', ds_pdf, the_out_node_str + 'scatter_cv')
 
                     if not strat:  # backprojection with strat split is not possible, becaus no estimator is estimated
                         # BACKPROJECT PREDICTION WEIGHTS
@@ -225,178 +235,12 @@ def learning_predict_data_wf(working_dir,
                     i += 1
 
 
-    # ###############################################################################################################
-    # # BACKPROJECT PREDICTION WEIGHTS
-    # # map weights back to single modality original format (e.g., nifti or matrix)
-    # backproject_and_split_weights = Node(util.Function(input_names=['trained_model_file',
-    #                                                                 'multimodal_backprojection_info', 'data_str',
-    #                                                                 'target_name'],
-    #                                                    output_names=['out_file_list', 'out_file_render_list'],
-    #                                                    function=backproject_and_split_weights_fct),
-    #                                      name='backproject_and_split_weights')
-    #
-    # the_from_node = prediction_split
-    # the_in_node = backproject_and_split_weights
-    # the_out_node_str = '01_split_weights_'
-    # wf.connect(the_from_node, 'model_out_file', the_in_node, 'trained_model_file')
-    # wf.connect(aggregate_multimodal_metrics, 'multimodal_backprojection_info', the_in_node,
-    #            'multimodal_backprojection_info')
-    # wf.connect(aggregate_multimodal_metrics, 'multimodal_name', the_in_node, 'data_str')
-    # wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
-    #
-    # wf.connect(the_in_node, 'out_file_list', ds_pdf, the_out_node_str + '.@weights')
-    # wf.connect(the_in_node, 'out_file_render_list', ds_pdf, the_out_node_str + 'renders.@renders')
-    #
-    #
-    #
-    # ###############################################################################################################
-    # # RUN PREDICTION FD regressed out
-    # prediction_split_regFD = prediction_split.clone('prediction_split_regFD')
-    # the_in_node = prediction_split_regFD
-    # the_out_node_str = '03_split_regFD_'
-    # the_in_node.inputs.regress_confounds = True
-    # the_in_node.inputs.use_grid_search = False
-    #
-    # wf.connect(select_multimodal_X, 'X_multimodal_selected_file', the_in_node, 'X_file')
-    # wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
-    # wf.connect(subject_selection_infosource, 'selection_criterium', the_in_node, 'selection_criterium')
-    # wf.connect(select_subjects, 'df_use_pickle_file', the_in_node, 'df_file')
-    # wf.connect(aggregate_multimodal_metrics, 'multimodal_name', the_in_node, 'data_str')
-    #
-    # wf.connect(the_in_node, 'model_out_file', ds, the_out_node_str + 'trained_model')
-    # wf.connect(the_in_node, 'scatter_file', ds_pdf, the_out_node_str + 'scatter')
-    # wf.connect(the_in_node, 'brain_age_scatter_file', ds_pdf, the_out_node_str + 'brain_age_scatter')
-    # wf.connect(the_in_node, 'df_use_file', ds_pdf, the_out_node_str + 'predicted')
-    # wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
-    #
-    #
-    # ###############################################################################################################
-    # # BACKPROJECT PREDICTION WEIGHTS FD regressed out
-    # backproject_and_split_regFD_weights = backproject_and_split_weights.clone('backproject_and_split_regFD_weights')
-    # the_from_node = prediction_split_regFD
-    # the_in_node = backproject_and_split_regFD_weights
-    # the_out_node_str = '03_split_regFD_weights_'
-    # wf.connect(the_from_node, 'model_out_file', the_in_node, 'trained_model_file')
-    # wf.connect(aggregate_multimodal_metrics, 'multimodal_backprojection_info', the_in_node,
-    #            'multimodal_backprojection_info')
-    # wf.connect(aggregate_multimodal_metrics, 'multimodal_name', the_in_node, 'data_str')
-    # wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
-    #
-    # wf.connect(the_in_node, 'out_file_list', ds_pdf, the_out_node_str + '.@weights')
-    # wf.connect(the_in_node, 'out_file_render_list', ds_pdf, the_out_node_str + 'renders.@renders')
-    #
-
-
-
-    # #####################################
-    # # TEST TEST TEST TET
-    #
-    # def run_prediction_strat_split(X_file, target_name, df_file, data_str, regress_confounds=False,
-    #                                use_grid_search=False):
-    #     import os, pickle
-    #     import numpy as np
-    #     import pandas as pd
-    #     from sklearn.svm import SVR
-    #     from sklearn.cross_validation import cross_val_score, cross_val_predict
-    #     from sklearn.feature_selection import VarianceThreshold
-    #     from sklearn.preprocessing import MinMaxScaler, StandardScaler
-    #     from sklearn.preprocessing import Imputer
-    #     from sklearn.pipeline import Pipeline
-    #     from sklearn.metrics import r2_score, mean_absolute_error
-    #     from sklearn.cross_validation import train_test_split
-    #     from sklearn.grid_search import GridSearchCV
-    #     # for some reason, only full path works
-    #     from LeiCA_LIFE.learning.utils import pred_real_scatter, plot_brain_age, residualize_group_data
-    #     from sklearn.decomposition import PCA
-    #     from sklearn.feature_selection import RFE
-    #     from sklearn.cross_validation import StratifiedShuffleSplit
-    #     data_str = target_name + '__' + data_str
-    #
-    #     df = pd.read_pickle(df_file)
-    #     # add ouput cols to df
-    #     df['split_group'] = ''
-    #     df['pred_age_train'] = np.nan
-    #     df['pred_age_test'] = np.nan
-    #
-    #     X = np.load(X_file)
-    #
-    #     y = df[[target_name]].values.squeeze()
-    #
-    #     confounds = df[['mean_FD_P']].values
-    #
-    #     ind = range(X.shape[0])
-    #     n_bins = 10
-    #     df['mean_FD_P_bins'] = pd.cut(df['mean_FD_P'], n_bins, labels=range(n_bins))
-    #
-    #     cv = StratifiedShuffleSplit(df['mean_FD_P_bins'].values, 5, test_size=0.5, random_state=0)
-    #
-    #
-    #
-    #
-    #     # REGRESS OUT CONFOUNDS IF NEEDED
-    #     if regress_confounds:
-    #         X = residualize_group_data(X, confounds)
-    #
-    #     # PREPROCESSING
-    #     fill_missing = Imputer()
-    #     var_thr = VarianceThreshold()
-    #     normalize = StandardScaler()
-    #
-    #     regression_model = SVR(kernel='linear')
-    #
-    #     pipeline = Pipeline([
-    #         ('fill_missing', fill_missing),
-    #         ('var_thr', var_thr),
-    #         ('normalize', normalize),
-    #         ('regression_model', regression_model),
-    #         # ('rfe', rfe),
-    #     ])
-    #
-    #     pipe = pipeline
-    #
-    #     #pipe.fit(X, y, cv=cv)
-    #
-    #     #print("The best parameters are %s with a score of %0.2f" % (pipe.best_params_, pipe.best_score_))
-    #
-    # prediction_strat_split = Node(
-    #     util.Function(
-    #         input_names=['X_file',
-    #                      'target_name',
-    #                      'df_file',
-    #                      'data_str',
-    #                      'regress_confounds',
-    #                      'use_grid_search'],
-    #         output_names=['scatter_file',
-    #                       'brain_age_scatter_file',
-    #                       'df_use_file',
-    #                       'model_out_file',
-    #                       'df_res_out_file'],
-    #         function=run_prediction_strat_split),
-    #     name='prediction_strat_split')
-    # the_in_node = prediction_strat_split
-    # the_out_node_str = '11_strat_split_'
-    # the_in_node.inputs.regress_confounds = False
-    # the_in_node.inputs.use_grid_search = False
-
-    # wf.connect(select_multimodal_X, 'X_multimodal_selected_file', the_in_node, 'X_file')
-    # wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
-    # wf.connect(subject_selection_infosource, 'selection_criterium', the_in_node, 'selection_criterium')
-    # wf.connect(select_subjects, 'df_use_pickle_file', the_in_node, 'df_file')
-    # wf.connect(aggregate_multimodal_metrics, 'multimodal_name', the_in_node, 'data_str')
-    #
-    # wf.connect(the_in_node, 'model_out_file', ds, the_out_node_str + 'trained_model')
-    # wf.connect(the_in_node, 'scatter_file', ds_pdf, the_out_node_str + 'scatter')
-    # wf.connect(the_in_node, 'brain_age_scatter_file', ds_pdf, the_out_node_str + 'brain_age_scatter')
-    # wf.connect(the_in_node, 'df_use_file', ds_pdf, the_out_node_str + 'predicted')
-    # wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
-
-
 
     ###############################################################################################################
-    #  RUN WF
-    wf.write_graph(dotfilename=wf.name, graph2use='colored', format='pdf')  # 'hierarchical')
-    wf.write_graph(dotfilename=wf.name, graph2use='orig', format='pdf')
-    wf.write_graph(dotfilename=wf.name, graph2use='flat', format='pdf')
+    # #  RUN WF
+    # wf.write_graph(dotfilename=wf.name, graph2use='colored', format='pdf')  # 'hierarchical')
+    # wf.write_graph(dotfilename=wf.name, graph2use='orig', format='pdf')
+    # wf.write_graph(dotfilename=wf.name, graph2use='flat', format='pdf')
 
     if plugin_name == 'CondorDAGMan':
         wf.run(plugin=plugin_name)
