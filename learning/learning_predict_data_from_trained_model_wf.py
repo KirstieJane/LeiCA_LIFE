@@ -10,7 +10,6 @@ def learning_predict_data_wf(working_dir,
                              use_n_procs,
                              plugin_name,
                              confound_regression=[False, True]):
-
     # trained_model_template = {
     # 'trained_model': 'learning_out/group_learning_prepare_data/{ana_stream}trained_model/' +
     #                  '_multimodal_in_data_name_{multimodal_in_data_name}/_selection_criterium_bothSexes_neuH/' +
@@ -167,8 +166,6 @@ def learning_predict_data_wf(working_dir,
 
     def rep(s):
         return s.replace('__', '.')
-
-
 
     select_trained_model = Node(nio.SelectFiles(trained_model_template), 'select_trained_model')
 

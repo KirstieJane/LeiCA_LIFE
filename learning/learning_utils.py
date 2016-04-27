@@ -112,14 +112,20 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     df['pred_age_train'] = np.nan
     df['pred_age_test'] = np.nan
 
-    X = np.load(X_file)
 
+
+
+    #### LOAD DATA
+    X = np.load(X_file)
     y = df[[target_name]].values.squeeze()
     confounds = df[['mean_FD_P']].values
-
     ind = range(X.shape[0])
 
-    # split with age stratification
+
+
+
+
+    #### split with age stratification
     n_age_bins = 20
     df['age_bins'] = pd.cut(df['age'], n_age_bins, labels=range(n_age_bins))
 
@@ -134,17 +140,17 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     df.ix[ind_train, ['split_group']] = 'train'
     df.ix[ind_test, ['split_group']] = 'test'
 
-    # REGRESS OUT CONFOUNDS IF NEEDED
+    #### REGRESS OUT CONFOUNDS IF NEEDED
     if regress_confounds:
         X_train = residualize_group_data(X_train, confounds_train)
         X_test = residualize_group_data(X_test, confounds_test)
 
-    # PREPROCESSING
+    #### PREPROCESSING
     fill_missing = Imputer()
     var_thr = VarianceThreshold()
     normalize = StandardScaler()
 
-    # set C to values
+    #### set C to values
     if 'aseg' in data_str:
         C = 1
     else:
@@ -158,7 +164,10 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     pipeline_list.append(('regression_model', regression_model))
     pipe = Pipeline(pipeline_list)
 
-    # FIT MODEL
+
+
+
+    #### FIT MODEL
     pipe.fit(X_train, y_train)
     y_predicted_train = pipe.predict(X_train)
     y_predicted = pipe.predict(X_test)
@@ -221,6 +230,10 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     random_motion_r2 = r2_score(y_random_motion, y_predicted_random_motion)
     random_motion_mae = mean_absolute_error(y_random_motion, y_predicted_random_motion)
 
+
+
+
+    #### RUN CROSSVALIDATION
     df['y_predicted_cv'] = np.nan
     if run_cv:
         strat_k_fold = StratifiedKFold(df['age_bins'].values[ind_train], n_folds=5, shuffle=True, random_state=0)
@@ -243,7 +256,10 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         df['cv_test_fold'] = np.nan
         df.ix[ind_train, ['cv_test_fold']] = cv_test_fold
 
-    # SCATTER PLOTS
+
+
+
+    #### SCATTER PLOTS
     title_str = 'r2: {:.3f} MAE:{:.3f}'.format(test_r2, test_mae)
     scatter_file = pred_real_scatter(y_test, y_predicted, title_str, data_str)
 
@@ -267,9 +283,11 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     df_use_file = os.path.join(os.getcwd(), data_str + '_df_predicted.pkl')
     df.to_pickle(df_use_file)
 
+
+
+
+    #### TUNING CURVES
     if run_tuning:
-        # #############################################
-        # TUNING CURVES
         from sklearn.learning_curve import validation_curve
         from sklearn.cross_validation import StratifiedKFold
         import pylab as plt
@@ -307,7 +325,10 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         tuning_curve_file = empty_file
 
 
-    # performace results df
+
+
+
+    #### SAVE
     df_res_out_file = os.path.abspath(data_str + '_df_results.pkl')
     df_res = pd.DataFrame(
         {'FD_res': regress_confounds, 'r2_train': [train_r2], 'MAE_train': [train_mae], 'r2_test': [test_r2],
@@ -319,6 +340,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     model_out_file = os.path.join(os.getcwd(), 'trained_model.pkl')
     with open(model_out_file, 'w') as f:
         pickle.dump(pipe, f)
+
     return scatter_file, brain_age_scatter_file, df_use_file, model_out_file, df_res_out_file, \
            scatter_file_no_motion, scatter_file_random_motion, tuning_curve_file, scatter_file_cv
 
@@ -606,3 +628,298 @@ def run_prediction_from_trained_model_fct(trained_model_file, X_file, target_nam
     df_res.to_pickle(df_res_out_file)
 
     return scatter_file, brain_age_scatter_file, df_use_file, df_res_out_file
+
+
+
+
+
+###############################################################################################################
+# PREDICTION WITH 2 TRAINING SAMPLES
+# and helpers for residualizing and plotting
+def run_prediction_split_2samp_fct(X_file, target_name, selection_criterium, df_file, data_str, regress_confounds=False,
+                             run_cv=False, n_jobs_cv=1, run_tuning=False, X_file_nki=None, df_file_nki=None):
+    import os, pickle
+    import numpy as np
+    import pandas as pd
+    from sklearn.svm import SVR
+    from sklearn.cross_validation import cross_val_predict, train_test_split, StratifiedKFold
+    from sklearn.feature_selection import VarianceThreshold
+    from sklearn.preprocessing import StandardScaler, Imputer
+    from sklearn.pipeline import Pipeline
+    from sklearn.metrics import r2_score, mean_absolute_error
+    from sklearn.utils import shuffle
+    from LeiCA_LIFE.learning.learning_utils import pred_real_scatter, plot_brain_age, residualize_group_data
+
+
+    # NKI
+    df_nki = pd.read_pickle(df_file_nki)
+    X_nki = np.load(X_file_nki)
+    y_nki = df_nki[[target_name]].values.squeeze()
+    confounds_nki = df_nki[['mean_FD_P']].values
+    ind_nki = range(X_nki.shape[0])
+
+    n_age_bins = 20
+    df_nki['age_bins'] = pd.cut(df_nki['age'], n_age_bins, labels=range(n_age_bins))
+
+    X_train_nki, X_test_nki, y_train_nki, y_test_nki, \
+    confounds_train_nki, confounds_test_nki, ind_train_nki, ind_test_nki = train_test_split(
+        X_nki, y_nki,
+        confounds_nki,
+        ind_nki,
+        stratify=df_nki['age_bins'].values,
+        train_size=0.1,
+        random_state=666)
+    df_nki['2samp_train_group'] = False
+    df_nki.ix[ind_train_nki, '2samp_train_group'] = True
+    df_nki['pred_age_train'] = np.nan
+
+    empty_file = os.path.abspath('empty.txt')
+    with open(empty_file, 'w') as f:
+        f.write('')
+
+    data_str = target_name + '__' + selection_criterium + '__' + data_str
+
+    variables = ['train_mae', 'train_r2', 'cv_r2', 'cv_mae', 'cv_r2_mean', 'cv_r2_std', 'no_motion_r2',
+                 'random_motion_r2',
+                 'no_motion_mae', 'random_motion_mae', 'y_no_motion', 'y_random_motion', 'y_predicted_no_motion',
+                 'y_predicted_random_motion', 'y_predicted_cv']
+    for v in variables:
+        try:
+            exec (v)
+        except NameError:
+            exec ('%s = np.nan' % v)
+
+    df = pd.read_pickle(df_file)
+    # add ouput cols to df
+    df['split_group'] = ''
+    df['pred_age_train'] = np.nan
+    df['pred_age_test'] = np.nan
+
+    X = np.load(X_file)
+
+    y = df[[target_name]].values.squeeze()
+    confounds = df[['mean_FD_P']].values
+
+    ind = range(X.shape[0])
+
+    # split with age stratification
+    n_age_bins = 20
+    df['age_bins'] = pd.cut(df['age'], n_age_bins, labels=range(n_age_bins))
+
+    X_train_life, X_test_life, y_train_life, y_test_life, \
+    confounds_train_life, confounds_test_life, ind_train_life, ind_test_life = train_test_split(
+        X, y,
+        confounds,
+        ind,
+        stratify=df['age_bins'].values,
+        test_size=0.5,
+        random_state=666)
+    df.ix[ind_train_life, ['split_group']] = 'train'
+    df.ix[ind_test_life, ['split_group']] = 'test'
+
+    # stack life and nki
+    X_train = np.concatenate((X_train_life, X_train_nki))
+    y_train = np.concatenate((y_train_life, y_train_nki))
+    stacked_ind_train_life = slice(0, X_train_life.shape[0])
+    stacked_ind_train_nki = slice(X_train_life.shape[0], X_train.shape[0])
+    age_bins_train = np.concatenate((df.ix[ind_train_life, 'age_bins'].values, df_nki.ix[ind_train_nki, 'age_bins'].values))
+    confounds_train = np.concatenate((confounds_train_life, confounds_train_nki))
+    # test with life data only
+    X_test = X_test_life
+    y_test = y_test_life
+    confounds_test = confounds_test_life
+
+    # REGRESS OUT CONFOUNDS IF NEEDED
+    if regress_confounds:
+        X_train = residualize_group_data(X_train, confounds_train)
+        X_test = residualize_group_data(X_test, confounds_test)
+
+    # PREPROCESSING
+    fill_missing = Imputer()
+    var_thr = VarianceThreshold()
+    normalize = StandardScaler()
+
+    # set C to values
+    if 'aseg' in data_str:
+        C = 1
+    else:
+        C = 10 ** -3
+
+    regression_model = SVR(kernel='linear', C=C, cache_size=1000)
+    pipeline_list = [('fill_missing', fill_missing),
+                     ('var_thr', var_thr),
+                     ('normalize', normalize)]
+
+    pipeline_list.append(('regression_model', regression_model))
+    pipe = Pipeline(pipeline_list)
+
+    # FIT MODEL
+    pipe.fit(X_train, y_train)
+    y_predicted_train = pipe.predict(X_train)
+    y_predicted = pipe.predict(X_test)
+
+    df.ix[ind_train_life, ['pred_age_train']] = y_predicted_train[stacked_ind_train_life]
+    df.ix[ind_test_life, ['pred_age_test']] = y_predicted
+
+    # NKI
+    df_nki.ix[ind_train_nki, ['pred_age_train']] = y_predicted_train[stacked_ind_train_nki]
+
+    test_mae = mean_absolute_error(y_test, y_predicted)
+    test_r2 = r2_score(y_test, y_predicted)
+    test_rpear2 = np.corrcoef(y_test, y_predicted)[0, 1]
+
+    train_mae = mean_absolute_error(y_train, y_predicted_train)
+    train_r2 = r2_score(y_train, y_predicted_train)
+
+
+
+
+    #### Prediction in motion equal age groups
+    # select a group lacking age motion correlation by restricting FD between .17 and .27
+    # and randomly selected sample of same size (keeping motion age correlation)
+    # only taking age>25 (makes matching with motion group easier)
+    df['no_motion_grp'] = False
+    df.loc[
+        (df['age'] > 25) & (df['mean_FD_P'] > .17) & (df['mean_FD_P'] < 0.27) & (
+            df['split_group'] == 'test'), 'no_motion_grp'] = True
+    no_motion = df.query('no_motion_grp')
+
+    all_test_ind = np.where(np.logical_and(df.split_group == 'test', df['age'] > 25))[0]
+    rand_sel_test_ind = all_test_ind.copy()
+    rand_sel_test_ind = shuffle(rand_sel_test_ind, random_state=0)
+    rand_sel_test_ind = rand_sel_test_ind[:len(no_motion)]
+    df['random_motion_grp'] = False
+    df.ix[rand_sel_test_ind, 'random_motion_grp'] = True
+
+    df['pred_age_no_motion'] = np.nan
+    df['pred_age_random_motion'] = np.nan
+
+    # pred
+    no_motion_ind = []
+    for s in df[df.no_motion_grp].index:
+        no_motion_ind.append(df.index.get_loc(s))
+
+    X_no_motion = X[no_motion_ind, :]
+    y_no_motion = y[no_motion_ind]
+    y_predicted_no_motion = pipe.predict(X_no_motion)
+    df.ix[no_motion_ind, ['pred_age_no_motion']] = y_predicted_no_motion
+
+    random_motion_ind = []
+    for s in df[df.random_motion_grp].index:
+        random_motion_ind.append(df.index.get_loc(s))
+
+    X_random_motion = X[random_motion_ind, :]
+    y_random_motion = y[random_motion_ind]
+    y_predicted_random_motion = pipe.predict(X_random_motion)
+    df.ix[random_motion_ind, ['pred_age_random_motion']] = y_predicted_random_motion
+
+    no_motion_r2 = r2_score(y_no_motion, y_predicted_no_motion)
+    no_motion_mae = mean_absolute_error(y_no_motion, y_predicted_no_motion)
+
+    random_motion_r2 = r2_score(y_random_motion, y_predicted_random_motion)
+    random_motion_mae = mean_absolute_error(y_random_motion, y_predicted_random_motion)
+
+    df['y_predicted_cv'] = np.nan
+    if run_cv:
+        strat_k_fold = StratifiedKFold(df['age_bins'].values[ind_train], n_folds=5, shuffle=True, random_state=0)
+        # crossval predict and manually calc. cv score to get y_cv_predicted
+        # cv_score_ = cross_val_score(pipe, X_train, y_train, cv=strat_k_fold, n_jobs=n_jobs_cv)  #
+        y_predicted_cv = cross_val_predict(pipe, X_train, y_train, cv=strat_k_fold, n_jobs=n_jobs_cv)
+        df.ix[ind_train, ['y_predicted_cv']] = y_predicted_cv
+
+        cv_r2 = []
+        cv_mae = []
+        cv_test_fold = np.zeros_like(y_train)
+        cv_test_fold.fill(np.nan)
+        for k, (k_train, k_test) in enumerate(strat_k_fold):
+            cv_r2.append(r2_score(y_train[k_test], y_predicted_cv[k_test]))
+            cv_mae.append(mean_absolute_error(y_train[k_test], y_predicted_cv[k_test]))
+            cv_test_fold[k_test] = k
+        cv_r2_mean = np.mean(cv_r2)
+        cv_r2_std = np.std(cv_r2)
+
+        df['cv_test_fold'] = np.nan
+        df.ix[ind_train, ['cv_test_fold']] = cv_test_fold
+
+    # SCATTER PLOTS
+    title_str = 'r2: {:.3f} MAE:{:.3f}'.format(test_r2, test_mae)
+    scatter_file = pred_real_scatter(y_test, y_predicted, title_str, data_str)
+
+    if run_cv:
+        title_str = 'r2: {:.3f}({:.3f}) MAE:{:.3f}({:.3f})'.format(cv_r2_mean, cv_r2_std, np.mean(cv_mae),
+                                                                   np.std(cv_mae))
+        scatter_file_cv = pred_real_scatter(y_train, y_predicted_cv, title_str, data_str, post_str='_cv')
+
+    else:
+        scatter_file_cv = empty_file
+
+    title_str = 'r2: {:.3f} MAE:{:.3f}'.format(no_motion_r2, no_motion_mae)
+    scatter_file_no_motion = pred_real_scatter(y_no_motion, y_predicted_no_motion, title_str, data_str,
+                                               post_str='_no_motion')
+    title_str = 'r2: {:.3f} MAE:{:.3f}'.format(random_motion_r2, random_motion_mae)
+    scatter_file_random_motion = pred_real_scatter(y_random_motion, y_predicted_random_motion, title_str, data_str,
+                                                   post_str='_random_motion')
+
+    brain_age_scatter_file = plot_brain_age(y_test, y_predicted, data_str)
+
+    df_use_file = os.path.join(os.getcwd(), data_str + '_df_predicted.pkl')
+    df.to_pickle(df_use_file)
+
+    if run_tuning:
+        # #############################################
+        # TUNING CURVES
+        from sklearn.learning_curve import validation_curve
+        from sklearn.cross_validation import StratifiedKFold
+        import pylab as plt
+        strat_k_fold = StratifiedKFold(df['age_bins'].values[ind_train], n_folds=10, shuffle=True, random_state=0)
+        param_range = np.logspace(-4, 0, num=12)
+        # fixme n_jobs
+        train_scores, test_scores = validation_curve(pipe, X_train, y_train, param_name="regression_model__C",
+                                                     param_range=param_range,
+                                                     cv=strat_k_fold, n_jobs=n_jobs_cv)
+        # plot
+        # http://scikit-learn.org/stable/auto_examples/model_selection/plot_validation_curve.html#example-model-selection-plot-validation-curve-py
+        train_scores_mean = np.mean(train_scores, axis=1)
+        train_scores_std = np.std(train_scores, axis=1)
+        test_scores_mean = np.mean(test_scores, axis=1)
+        test_scores_std = np.std(test_scores, axis=1)
+        plt.figure()
+        plt.title("Validation Curve")
+        plt.xlabel("C")
+        plt.ylabel("Score")
+        plt.ylim(0.0, 1.1)
+        plt.semilogx(param_range, train_scores_mean, label="Training score", color="r")
+        plt.fill_between(param_range, train_scores_mean - train_scores_std, train_scores_mean + train_scores_std,
+                         alpha=0.2,
+                         color="r")
+        plt.semilogx(param_range, test_scores_mean, label="Cross-validation score", color="g")
+        plt.fill_between(param_range, test_scores_mean - test_scores_std, test_scores_mean + test_scores_std, alpha=0.2,
+                         color="g")
+        plt.legend(loc="best")
+
+        tuning_curve_file = os.path.join(os.getcwd(), 'tuning_curve_' + data_str + '.pdf')
+        plt.savefig(tuning_curve_file)
+        plt.close()
+        # #############################################
+    else:
+        tuning_curve_file = empty_file
+
+
+    # performace results df
+    df_res_out_file = os.path.abspath(data_str + '_df_results.pkl')
+    df_res = pd.DataFrame(
+        {'FD_res': regress_confounds, 'r2_train': [train_r2], 'MAE_train': [train_mae], 'r2_test': [test_r2],
+         'rpear2_test': [test_rpear2], 'MAE_test': [test_mae], 'cv_r2': [cv_r2], 'cv_r2_mean': [cv_r2_mean],
+         'cv_r2_std': [cv_r2_std], 'no_motion_r2': [no_motion_r2], 'random_motion_r2': random_motion_r2},
+        index=[data_str])
+    df_res.to_pickle(df_res_out_file)
+
+    df_nki_out_file = os.path.abspath(data_str + '_nki_df.pkl')
+    df_nki.to_pickle(df_nki_out_file)
+
+    model_out_file = os.path.join(os.getcwd(), 'trained_model.pkl')
+    with open(model_out_file, 'w') as f:
+        pickle.dump(pipe, f)
+    return scatter_file, brain_age_scatter_file, df_use_file, model_out_file, df_res_out_file, \
+           scatter_file_no_motion, scatter_file_random_motion, tuning_curve_file, scatter_file_cv, df_nki_out_file
+
