@@ -7,9 +7,6 @@ def learning_predict_data_wf(working_dir,
                              target_list,
                              use_n_procs,
                              plugin_name,
-                             scaler=['standard'],
-                             rfe=[False, True],
-                             strat_split=[False],
                              confound_regression=[False, True],
                              run_cv=False,
                              n_jobs_cv=1,
@@ -155,10 +152,6 @@ def learning_predict_data_wf(working_dir,
                                                        'df_file',
                                                        'data_str',
                                                        'regress_confounds',
-                                                       'use_grid_search',
-                                                       'scaler',
-                                                       'rfe',
-                                                       'strat_split',
                                                        'run_cv',
                                                        'n_jobs_cv'],
                                           output_names=['scatter_file',
@@ -183,56 +176,49 @@ def learning_predict_data_wf(working_dir,
                                          name='backproject_and_split_weights')
 
     i = 0
-    for s in scaler:
-        for r in rfe:
-            for strat in strat_split:
-                for reg in confound_regression:
-                    the_out_node_str = 'scaler_%s_rfe_%s_strat_%s_reg_%s_' % (s, r, strat, reg)
-                    prediction_node_dict[i] = prediction_split.clone(the_out_node_str)
-                    the_in_node = prediction_node_dict[i]
-                    the_in_node.inputs.use_grid_search = False
-                    the_in_node.inputs.regress_confounds = reg
-                    the_in_node.inputs.scaler = s
-                    the_in_node.inputs.rfe = r
-                    the_in_node.inputs.strat_split = strat
-                    the_in_node.inputs.run_cv = run_cv
-                    the_in_node.inputs.n_jobs_cv = n_jobs_cv
-                    the_in_node.inputs.run_tuning = run_tuning
 
-                    wf.connect(select_multimodal_X, 'X_multimodal_selected_file', the_in_node, 'X_file')
-                    wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
-                    wf.connect(subject_selection_infosource, 'selection_criterium', the_in_node, 'selection_criterium')
-                    wf.connect(select_subjects, 'df_use_pickle_file', the_in_node, 'df_file')
-                    wf.connect(aggregate_multimodal_metrics, 'multimodal_name', the_in_node, 'data_str')
+    for reg in confound_regression:
+        the_out_node_str = 'single_source_model_reg_%s_' % (reg)
+        prediction_node_dict[i] = prediction_split.clone(the_out_node_str)
+        the_in_node = prediction_node_dict[i]
+        the_in_node.inputs.use_grid_search = False
+        the_in_node.inputs.regress_confounds = reg
+        the_in_node.inputs.run_cv = run_cv
+        the_in_node.inputs.n_jobs_cv = n_jobs_cv
+        the_in_node.inputs.run_tuning = run_tuning
 
-                    wf.connect(the_in_node, 'model_out_file', ds, the_out_node_str + 'trained_model')
-                    wf.connect(the_in_node, 'scatter_file', ds_pdf, the_out_node_str + 'scatter')
-                    wf.connect(the_in_node, 'brain_age_scatter_file', ds_pdf, the_out_node_str + 'brain_age_scatter')
-                    wf.connect(the_in_node, 'df_use_file', ds_pdf, the_out_node_str + 'predicted')
-                    wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
-                    wf.connect(the_in_node, 'scatter_file_no_motion', ds_pdf, the_out_node_str + 'scatter_motion.@no_mo')
-                    wf.connect(the_in_node, 'scatter_file_random_motion', ds_pdf, the_out_node_str + 'scatter_motion.@rand_mo')
-                    wf.connect(the_in_node, 'tuning_curve_file', ds_pdf, the_out_node_str + 'tuning_curve')
-                    wf.connect(the_in_node, 'scatter_file_cv', ds_pdf, the_out_node_str + 'scatter_cv')
+        wf.connect(select_multimodal_X, 'X_multimodal_selected_file', the_in_node, 'X_file')
+        wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
+        wf.connect(subject_selection_infosource, 'selection_criterium', the_in_node, 'selection_criterium')
+        wf.connect(select_subjects, 'df_use_pickle_file', the_in_node, 'df_file')
+        wf.connect(aggregate_multimodal_metrics, 'multimodal_name', the_in_node, 'data_str')
 
-                    if not strat:  # backprojection with strat split is not possible, becaus no estimator is estimated
-                        # BACKPROJECT PREDICTION WEIGHTS
-                        # map weights back to single modality original format (e.g., nifti or matrix)
-                        the_out_node_str = 'backprojection_scaler_%s_rfe_%s_strat_%s_reg_%s_' % (
-                            s, r, strat, reg)
-                        backprojection_node_dict[i] = backproject_and_split_weights.clone(the_out_node_str)
-                        the_from_node = prediction_node_dict[i]
-                        the_in_node = backprojection_node_dict[i]
-                        wf.connect(the_from_node, 'model_out_file', the_in_node, 'trained_model_file')
-                        wf.connect(aggregate_multimodal_metrics, 'multimodal_backprojection_info', the_in_node,
-                                   'multimodal_backprojection_info')
-                        wf.connect(aggregate_multimodal_metrics, 'multimodal_name', the_in_node, 'data_str')
-                        wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
+        wf.connect(the_in_node, 'model_out_file', ds, the_out_node_str + 'trained_model')
+        wf.connect(the_in_node, 'scatter_file', ds_pdf, the_out_node_str + 'scatter')
+        wf.connect(the_in_node, 'brain_age_scatter_file', ds_pdf, the_out_node_str + 'brain_age_scatter')
+        wf.connect(the_in_node, 'df_use_file', ds_pdf, the_out_node_str + 'predicted')
+        wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
+        wf.connect(the_in_node, 'scatter_file_no_motion', ds_pdf, the_out_node_str + 'scatter_motion.@no_mo')
+        wf.connect(the_in_node, 'scatter_file_random_motion', ds_pdf, the_out_node_str + 'scatter_motion.@rand_mo')
+        wf.connect(the_in_node, 'tuning_curve_file', ds_pdf, the_out_node_str + 'tuning_curve')
+        wf.connect(the_in_node, 'scatter_file_cv', ds_pdf, the_out_node_str + 'scatter_cv')
 
-                        wf.connect(the_in_node, 'out_file_list', ds_pdf, the_out_node_str + '.@weights')
-                        wf.connect(the_in_node, 'out_file_render_list', ds_pdf, the_out_node_str + 'renders.@renders')
+        # BACKPROJECT PREDICTION WEIGHTS
+        # map weights back to single modality original format (e.g., nifti or matrix)
+        the_out_node_str = 'backprojection_single_source_model_reg_%s_' % (reg)
+        backprojection_node_dict[i] = backproject_and_split_weights.clone(the_out_node_str)
+        the_from_node = prediction_node_dict[i]
+        the_in_node = backprojection_node_dict[i]
+        wf.connect(the_from_node, 'model_out_file', the_in_node, 'trained_model_file')
+        wf.connect(aggregate_multimodal_metrics, 'multimodal_backprojection_info', the_in_node,
+                   'multimodal_backprojection_info')
+        wf.connect(aggregate_multimodal_metrics, 'multimodal_name', the_in_node, 'data_str')
+        wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
 
-                    i += 1
+        wf.connect(the_in_node, 'out_file_list', ds_pdf, the_out_node_str + '.@weights')
+        wf.connect(the_in_node, 'out_file_render_list', ds_pdf, the_out_node_str + 'renders.@renders')
+
+        i += 1
 
 
 

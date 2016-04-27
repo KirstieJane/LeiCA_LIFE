@@ -14,35 +14,38 @@ brain_mask = '/scr/adenauer2/Franz/LIFE16/Templates/MNI_resampled_brain_mask.nii
 template_dir = os.path.join(template_dir, 'parcellations')
 
 # con mat parameters
-bp_freq_list = [(None, None), (0.01, 0.1)]
+bp_freq_list =  [(0.01, 0.1)] #[(None, None), (0.01, 0.1)]
 TR = 2.0
 
 parcellations_dict = {}
-parcellations_dict['craddock_205'] = {
-    'nii_path': os.path.join(template_dir,
-                             'craddock_2012/scorr_mean_single_resolution/scorr_mean_parc_n_21_k_205_rois.nii.gz'),
-    'is_probabilistic': False}
-
-parcellations_dict['craddock_788'] = {
-    'nii_path': os.path.join(template_dir,
-                             'craddock_2012/scorr_mean_single_resolution/scorr_mean_parc_n_43_k_788_rois.nii.gz'),
-    'is_probabilistic': False}
-
-parcellations_dict['gordon'] = {
-    'nii_path': os.path.join(template_dir,
-                             'Gordon_2014_Parcels/Parcels_MNI_111_sorted.nii.gz'),
-    'is_probabilistic': False}
-
-parcellations_dict['msdl_abide'] = {
-    'nii_path': os.path.join(template_dir,
-                             'msdl_abide_2016/MSDL_ABIDE/maps.nii'),
-    'is_probabilistic': True}
+# parcellations_dict['craddock_205'] = {
+#     'nii_path': os.path.join(template_dir,
+#                              'craddock_2012/scorr_mean_single_resolution/scorr_mean_parc_n_21_k_205_rois.nii.gz'),
+#     'is_probabilistic': False}
+#
+# parcellations_dict['craddock_788'] = {
+#     'nii_path': os.path.join(template_dir,
+#                              'craddock_2012/scorr_mean_single_resolution/scorr_mean_parc_n_43_k_788_rois.nii.gz'),
+#     'is_probabilistic': False}
+#
+# parcellations_dict['gordon'] = {
+#     'nii_path': os.path.join(template_dir,
+#                              'Gordon_2014_Parcels/Parcels_MNI_111_sorted.nii.gz'),
+#     'is_probabilistic': False}
+#
+# parcellations_dict['msdl_abide'] = {
+#     'nii_path': os.path.join(template_dir,
+#                              'msdl_abide_2016/MSDL_ABIDE/maps.nii'),
+#     'is_probabilistic': True}
 
 parcellations_dict['basc_444'] = {
     'nii_path': os.path.join(template_dir,
                              'basc_multiscale_2015/template_cambridge_basc_multiscale_nii_sym/template_cambridge_basc_multiscale_sym_scale444.nii.gz'),
     'is_probabilistic': False}
-
+parcellations_dict['basc_197'] = {
+    'nii_path': os.path.join(template_dir,
+                             'basc_multiscale_2015/template_cambridge_basc_multiscale_nii_sym/template_cambridge_basc_multiscale_sym_scale197.nii.gz'),
+    'is_probabilistic': False}
 
 use_n_procs = 5
 # plugin_name = 'MultiProc'

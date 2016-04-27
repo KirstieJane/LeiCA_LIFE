@@ -6,12 +6,16 @@ def learning_predict_data_wf(working_dir,
                              subjects_selection_crit_names_list,
                              aggregated_subjects_dir,
                              target_list,
+                             trained_model_template,
                              use_n_procs,
                              plugin_name,
-                             scaler=['standard'],
-                             rfe=[False, True],
-                             strat_split=[False],
                              confound_regression=[False, True]):
+
+    # trained_model_template = {
+    # 'trained_model': 'learning_out/group_learning_prepare_data/{ana_stream}trained_model/' +
+    #                  '_multimodal_in_data_name_{multimodal_in_data_name}/_selection_criterium_bothSexes_neuH/' +
+    #                  '_target_name_{target_name}/trained_model.pkl'}
+
     import os
     from nipype import config
     from nipype.pipeline.engine import Node, Workflow
@@ -164,48 +168,42 @@ def learning_predict_data_wf(working_dir,
     def rep(s):
         return s.replace('__', '.')
 
-    trained_model_template = {
-        'trained_model': 'learning_out/group_learning_prepare_data/{ana_stream}trained_model/' +
-                         '_multimodal_in_data_name_{multimodal_in_data_name}/_selection_criterium_bothSexes_neuH/' +
-                         '_target_name_{target_name}/trained_model.pkl'}
+
 
     select_trained_model = Node(nio.SelectFiles(trained_model_template), 'select_trained_model')
 
     i = 0
-    for s in scaler:
-        for r in rfe:
-            for strat in strat_split:
-                for reg in confound_regression:
-                    the_out_node_str = 'scaler_%s_rfe_%s_strat_%s_reg_%s_' % (s, r, strat, reg)
 
-                    select_trained_model_node_dict[i] = select_trained_model.clone(
-                        the_out_node_str + 'select_trained_model')
-                    select_trained_model_node_dict[i].inputs.base_directory = trained_model_dir
-                    select_trained_model_node_dict[i].inputs.ana_stream = the_out_node_str
+    for reg in confound_regression:
+        the_out_node_str = 'single_source_model_reg_%s_' % reg
 
-                    wf.connect(target_infosource, 'target_name', select_trained_model_node_dict[i], 'target_name')
-                    # wf.connect(aggregate_multimodal_metrics, 'multimodal_name', select_trained_model_node_dict[i],
-                    wf.connect(aggregate_multimodal_metrics, ('multimodal_name', rep),
-                               select_trained_model_node_dict[i],
-                               'multimodal_in_data_name')
+        select_trained_model_node_dict[i] = select_trained_model.clone(
+            the_out_node_str + 'select_trained_model')
+        select_trained_model_node_dict[i].inputs.base_directory = trained_model_dir
+        select_trained_model_node_dict[i].inputs.ana_stream = the_out_node_str
 
-                    prediction_node_dict[i] = prediction.clone(the_out_node_str)
-                    the_in_node = prediction_node_dict[i]
-                    the_in_node.inputs.regress_confounds = reg
+        wf.connect(target_infosource, 'target_name', select_trained_model_node_dict[i], 'target_name')
+        wf.connect(aggregate_multimodal_metrics, ('multimodal_name', rep),
+                   select_trained_model_node_dict[i],
+                   'multimodal_in_data_name')
 
-                    wf.connect(select_trained_model_node_dict[i], 'trained_model', the_in_node, 'trained_model_file')
-                    wf.connect(select_multimodal_X, 'X_multimodal_selected_file', the_in_node, 'X_file')
-                    wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
-                    wf.connect(subject_selection_infosource, 'selection_criterium', the_in_node, 'selection_criterium')
-                    wf.connect(select_subjects, 'df_use_pickle_file', the_in_node, 'df_file')
-                    wf.connect(aggregate_multimodal_metrics, 'multimodal_name', the_in_node, 'data_str')
+        prediction_node_dict[i] = prediction.clone(the_out_node_str)
+        the_in_node = prediction_node_dict[i]
+        the_in_node.inputs.regress_confounds = reg
 
-                    wf.connect(the_in_node, 'scatter_file', ds_pdf, the_out_node_str + 'scatter')
-                    wf.connect(the_in_node, 'brain_age_scatter_file', ds_pdf, the_out_node_str + 'brain_age_scatter')
-                    wf.connect(the_in_node, 'df_use_file', ds_pdf, the_out_node_str + 'predicted')
-                    wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
+        wf.connect(select_trained_model_node_dict[i], 'trained_model', the_in_node, 'trained_model_file')
+        wf.connect(select_multimodal_X, 'X_multimodal_selected_file', the_in_node, 'X_file')
+        wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
+        wf.connect(subject_selection_infosource, 'selection_criterium', the_in_node, 'selection_criterium')
+        wf.connect(select_subjects, 'df_use_pickle_file', the_in_node, 'df_file')
+        wf.connect(aggregate_multimodal_metrics, 'multimodal_name', the_in_node, 'data_str')
 
-                    i += 1
+        wf.connect(the_in_node, 'scatter_file', ds_pdf, the_out_node_str + 'scatter')
+        wf.connect(the_in_node, 'brain_age_scatter_file', ds_pdf, the_out_node_str + 'brain_age_scatter')
+        wf.connect(the_in_node, 'df_use_file', ds_pdf, the_out_node_str + 'predicted')
+        wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
+
+        i += 1
 
 
 
