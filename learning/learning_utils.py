@@ -236,7 +236,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     #### RUN CROSSVALIDATION
     df['y_predicted_cv'] = np.nan
     if run_cv:
-        strat_k_fold = StratifiedKFold(df['age_bins'].values[ind_train], n_folds=5, shuffle=True, random_state=0)
+        strat_k_fold = StratifiedKFold(df['age_bins'].values[ind_train], n_folds=10, shuffle=True, random_state=0)
         # crossval predict and manually calc. cv score to get y_cv_predicted
         # cv_score_ = cross_val_score(pipe, X_train, y_train, cv=strat_k_fold, n_jobs=n_jobs_cv)  #
         y_predicted_cv = cross_val_predict(pipe, X_train, y_train, cv=strat_k_fold, n_jobs=n_jobs_cv)
@@ -291,7 +291,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         from sklearn.learning_curve import validation_curve
         from sklearn.cross_validation import StratifiedKFold
         import pylab as plt
-        strat_k_fold = StratifiedKFold(df['age_bins'].values[ind_train], n_folds=10, shuffle=True, random_state=0)
+        strat_k_fold = StratifiedKFold(df['age_bins'].values[ind_train], n_folds=5, shuffle=True, random_state=0)
         param_range = np.logspace(-4, 0, num=12)
         # fixme n_jobs
         train_scores, test_scores = validation_curve(pipe, X_train, y_train, param_name="regression_model__C",
