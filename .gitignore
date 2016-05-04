@@ -4,6 +4,8 @@
 screenlog*
 optunity
 .git_OLD/
+00_tmp.py
+templates/parcellations/00_parc_figs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
