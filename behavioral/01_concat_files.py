@@ -190,7 +190,7 @@ df_lesvol['wmh_ln'] = np.log(df_lesvol['wmh'] + 1)
 df = df.join(df_lesvol[['WM_gesamt', 'wmh', 'wmh_ln', 'wmh_norm', 'wmh_norm_ln']], how='left')
 
 
-# DROP SUBJECTS WITHOU FS TAB
+# DROP SUBJECTS bad FS
 bad_subj = ['LI01371995',
             'LI00104318',
             'LI02167432',
@@ -203,29 +203,17 @@ bad_subj = ['LI01371995',
             'LI03511532',
             'LI03467212',
             'LI0300607X',
-            'LI0049109X']
+            'LI0049109X',
+            'LI01530759']
 for bad in bad_subj:
     if bad in df.index:
         df.drop(bad, inplace=True)
 
 # ADD COGNTIION SCORE
-df_cs = pd.read_csv('Jana_20160418/CogState_Alter_Geschlecht_20160418.csv', index_col=0, na_values=[99,999])
-# only use subjects with >3 valid domains
-df_cs = df_cs.query('N_valid_domains>3')
-df_cs['cs_mean'] = df_cs[['CS_attention', 'CS_executive', 'CS_memory', 'CS_viscon', 'CS_language','CS_fluency']].mean(1)
-df_cs['cs_mean_z'] = zscore(df_cs['cs_mean'])
-
-# group into norm, mild, major
-df_cs['cs_mean_group'] = ''
-df_cs.ix[(df_cs.cs_mean_z > -1), 'cs_mean_group'] = 'norm'
-df_cs.ix[((df_cs.cs_mean_z < -1) & (df_cs.cs_mean_z > -2)), 'cs_mean_group'] = 'mild'
-df_cs.ix[(df_cs.cs_mean_z < -2), 'cs_mean_group'] = 'major'
-df_cs['cs_mean_group_int'] = df_cs['cs_mean_group'].replace({'norm': 0, 'mild': 1, 'major':2})
-
-df_cs.drop(['Geschlecht', 'MRT_DATUM', 'MRT_GRUPPE', 'GRP','t_days', 'age'], axis=1, inplace=True)
+# see cog_score.ipynb
+df_cs = pd.read_pickle('Jana_20160429/CogState_20160504.pkl')
+df_cs.drop(['Geschlecht', 'age'], axis=1, inplace=True)
 df = df.join(df_cs, how='left')
-
-
 
 n['post befund'] = len(df)
 n['neurol healthy'] = len(df.query('neurol_healthy'))
@@ -234,7 +222,19 @@ print('N SUBJECTS')
 print(n)
 
 
+# REDUCE BEHAV TO MINIMAL
+keep_cols = ['MRT_DATUM', 'MRT_GRUPPE', 't_days', 'age', 'sex',
+             'MRT_BefundFazekas', 'mri_lesion_num', 'mri_tumors_num', 'neurol_healthy',
+             'WM_gesamt', 'wmh', 'wmh_ln', 'wmh_norm', 'wmh_norm_ln',
 
+             'CS_attention_agenorm', 'CS_executive_agenorm', 'CS_memory_agenorm', 'CS_fluency_agenorm',
+             'CS_attention', 'CS_executive', 'CS_memory', 'CS_fluency',
+             'cs_mean_agenorm', 'cs_mean_z_agenorm',
+             'n_mild_agenorm', 'n_major_agenorm', 'cs_group_agenorm', 'cs_group_agenorm_int',
+             'cs_mean', 'cs_mean_z',
+             'n_mild', 'n_major', 'cs_group', 'cs_group_int']
+
+df = df[keep_cols]
 
 # add more to big
 tests = ['PV0250_D00030.xlsx', 'PV0250_T00041.xlsx', 'PV0250_T00043.xlsx', 'PV0250_T00044.xlsx', 'PV0250_T00083.xlsx',
