@@ -78,10 +78,6 @@ def learning_prepare_data_wf(working_dir,
 
         assert df_all.index.is_unique, 'duplicates in df index. fix before cont.'
 
-        # FIXME THINK ABOIUT HOW TO HANDLE BEHAV NANS: FOR NOW JUST IMPUTE
-        # df.dropna(inplace=True)
-        df_all.fillna(df_all.mean(), inplace=True)
-
         df_all_subjects_pickle_file = os.path.abspath('df_all.pkl')
         df_all.to_pickle(df_all_subjects_pickle_file)
 
