@@ -26,5 +26,5 @@ learning_predict_data_wf(working_dir=working_dir,
                          plugin_name=plugin_name,
                          confound_regression=[False, True],
                          run_cv=True,
-                         n_jobs_cv=10,
+                         n_jobs_cv=5,
                          run_tuning=False)
