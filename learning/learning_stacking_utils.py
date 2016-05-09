@@ -71,19 +71,20 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
         for s in source_selection_dict[stacking_crit]:
             df_all = pd.concat((df_all, df_in[s]))
 
-        #get one single source example to get age...
+        # get one single source example to get age...
         df_single_source = df_in[s]
 
         # add columns in the case of test-only data
         if 'split_group' not in df_all:
             df_all['split_group'] = 'test'
 
-        for a in ['select', 'y_predicted_cv', 'no_motion_grp', 'random_motion_grp']:
+        for a in ['select', 'y_predicted_cv', 'no_motion_grp', 'random_motion_grp', 'sample_weights',
+                  'train_group_2samp', 'study']:
             if a not in df_all:
                 df_all[a] = np.nan
 
         df = df_all[['source', 'age', 'split_group', 'select', 'y_predicted_cv', 'pred_age_test', 'no_motion_grp',
-                     'random_motion_grp']]
+                     'random_motion_grp', 'sample_weights', 'train_group_2samp', 'study']]
 
         test_ind = df['split_group'] == 'test'
         df_test = df[test_ind].copy()
@@ -91,7 +92,7 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
         if run_fitting:  # fit rf
             print ('Fitting stacking model')
 
-            train_ind = df['split_group'] == 'train'
+            train_ind = ((df['split_group'] == 'train') | (df['train_group_2samp'] == True))
             df_train = df[train_ind].copy()
 
             dd_train = df_train.pivot_table(values='y_predicted_cv', columns='source', index=df_train.index)
@@ -107,6 +108,10 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
 
             # TRAINING
             rf, cv_results = tune_and_train_rf(X_train, y_train, strat_k_fold)
+
+            dd_train['cv_test_fold'] = np.nan
+            for k, (k_train, k_test) in enumerate(strat_k_fold):
+                dd_train.ix[k_test, 'cv_test_fold'] = k
 
             fi = pd.DataFrame(rf.feature_importances_, columns=['feature_importances'], index=single_sources)
             plt.figure()
@@ -132,17 +137,18 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
                                          }, index=[stacking_crit])
 
             dd_train['y_predicted_cv'] = cv_results['y_predicted_cv']
-            dd_train['y_predicted_train'] = y_predicted_train
+            dd_train['pred_age_train'] = y_predicted_train
 
             plt.figure()
-            #plt.scatter(y_train, y_predicted_train)
-            f = sns.jointplot('age', 'y_predicted_train', data=dd_train, xlim=(10,90), ylim=(10,90))
+            # plt.scatter(y_train, y_predicted_train)
+            f = sns.jointplot('age', 'pred_age_train', data=dd_train, xlim=(10, 90), ylim=(10, 90))
             ax = sns.plt.gca()
             plt.savefig(os.path.abspath('scatter_train_' + file_pref + '_' + '_' + stacking_crit + '_.pdf'))
             plt.close()
         else:
             rf_file = rf_file_template.format(stacking_crit=stacking_crit)
             rf = pickle.load(open(rf_file))
+            dd_train = pd.DataFrame([])
 
 
         # PREDICTIONS ON TEST SET
@@ -156,14 +162,13 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
         motion_grps = motion_grps.drop_duplicates()[['no_motion_grp', 'random_motion_grp']]
         dd_test = dd_test.join(motion_grps, how='left')
 
-
         dd_test['mean_pred'] = dd_test.mean(1)
         dd_test = dd_test.join(df_single_source[['age']], how='left')
 
         X_test, y_test = dd_test[single_sources], dd_test['age']
-        dd_test['y_predicted_stacked'] = rf.predict(X_test)
+        dd_test['pred_age_test'] = rf.predict(X_test)
 
-        for m in source_selection_dict[stacking_crit] + ['mean_pred', 'y_predicted_stacked']:
+        for m in source_selection_dict[stacking_crit] + ['mean_pred', 'pred_age_test']:
             scores_test.ix[m, 'r2'] = r2_score(dd_test['age'], dd_test[m])
             scores_test.ix[m, 'rpear'] = np.corrcoef(dd_test['age'], dd_test[m])[0, 1]
             scores_test.ix[m, 'rpear2'] = np.corrcoef(dd_test['age'], dd_test[m])[0, 1] ** 2
@@ -171,7 +176,13 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
             scores_test.ix[m, 'medae'] = median_absolute_error(dd_test['age'], dd_test[m])
 
             plt.figure()
-
+            plt.scatter(dd_test['age'], dd_test[m])
+            # plt.axis('equal')
+            plt.plot([10, 90], [10, 90])
+            plt.xlim([10, 90]);
+            plt.ylim([10, 90])
+            plt.title('predictions TEST: %s (%s)\n%.3f' % (m, stacking_crit, scores_test.ix[m, 'r2']))
+            plt.gca().set_aspect('equal', adjustable='box')
             plt.savefig(os.path.abspath('scatter_test_' + file_pref + '_' + '_' + m + '_.pdf'))
             plt.close()
 
@@ -180,15 +191,15 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
             X_test_no_motion, y_test_no_motion = dd_test.ix[dd_test.no_motion_grp, single_sources], dd_test.ix[
                 dd_test.no_motion_grp, 'age']
             y_predicted_train_no_motion = rf.predict(X_test_no_motion)
-            dd_test.ix[dd_test.no_motion_grp, 'y_predicted_stacked_no_motion'] = y_predicted_train_no_motion
+            dd_test.ix[dd_test.no_motion_grp, 'pred_age_no_motion'] = y_predicted_train_no_motion
 
             X_test_random_motion, y_test_random_motion = dd_test.ix[dd_test.random_motion_grp, single_sources], \
                                                          dd_test.ix[
                                                              dd_test.random_motion_grp, 'age']
             y_predicted_train_random_motion = rf.predict(X_test_random_motion)
-            dd_test.ix[dd_test.random_motion_grp, 'y_predicted_stacked_random_motion'] = y_predicted_train_random_motion
+            dd_test.ix[dd_test.random_motion_grp, 'pred_age_random_motion'] = y_predicted_train_random_motion
 
-            m = 'y_predicted_stacked_no_motion'
+            m = 'pred_age_no_motion'
             y_true = y_test_no_motion
             y_pred = y_predicted_train_no_motion
             scores_test.ix[m, 'r2'] = r2_score(y_true, y_pred)
@@ -197,7 +208,7 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
             scores_test.ix[m, 'mae'] = mean_absolute_error(y_true, y_pred)
             scores_test.ix[m, 'medae'] = median_absolute_error(y_true, y_pred)
 
-            m = 'y_predicted_stacked_random_motion'
+            m = 'pred_age_random_motion'
             y_true = y_test_random_motion
             y_pred = y_predicted_train_random_motion
             scores_test.ix[m, 'r2'] = r2_score(y_true, y_pred)
@@ -208,7 +219,7 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
 
         # save
         rf_file = os.path.abspath(file_pref + 'stacking_fitted_model.pkl')
-        predictions_test_file = os.path.abspath(file_pref + 'stacking_df_predicted.pkl')
+        predictions_file = os.path.abspath(file_pref + 'stacking_df_predicted.pkl')
         scores_train_file = os.path.abspath(file_pref + 'stacking_train_df_results.pkl')
         scores_test_file = os.path.abspath(file_pref + 'stacking_test_df_results.pkl')
 
@@ -218,7 +229,13 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
             else:  # if model was not fittet here save empty structure
                 pickle.dump(np.nan, f)
 
-        dd_test.to_pickle(predictions_test_file)
+        # dd_test.to_pickle(predictions_test_file)
+        dd_test['split_group'] = 'test'
+        dd_train['split_group'] = 'train'
+        dd_big = pd.concat((dd_test, dd_train))
+        dd_big.to_pickle(predictions_file)
+
         scores_test.to_pickle(scores_test_file)
+
         if run_fitting:
             scores_train.to_pickle(scores_train_file)
