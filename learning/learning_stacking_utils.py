@@ -78,13 +78,12 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
         if 'split_group' not in df_all:
             df_all['split_group'] = 'test'
 
-        for a in ['select', 'y_predicted_cv', 'no_motion_grp', 'random_motion_grp', 'sample_weights',
-                  'train_group_2samp', 'study']:
+        for a in ['select', 'y_predicted_cv','sample_weights',  'train_group_2samp', 'study']: # 'no_motion_grp', 'random_motion_grp',
             if a not in df_all:
                 df_all[a] = np.nan
 
-        df = df_all[['source', 'age', 'split_group', 'select', 'y_predicted_cv', 'pred_age_test', 'no_motion_grp',
-                     'random_motion_grp', 'sample_weights', 'train_group_2samp', 'study']]
+        df = df_all[['source', 'age', 'split_group', 'select', 'y_predicted_cv', 'pred_age_test', 'sample_weights', 'train_group_2samp', 'study']] #'no_motion_grp', 'random_motion_grp',
+
 
         test_ind = df['split_group'] == 'test'
         df_test = df[test_ind].copy()
@@ -157,10 +156,10 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
         single_sources = dd_test.columns.values
 
         # add motion groups to df
-        motion_grps = df[['no_motion_grp', 'random_motion_grp']].copy()
-        motion_grps['ind'] = motion_grps.index
-        motion_grps = motion_grps.drop_duplicates()[['no_motion_grp', 'random_motion_grp']]
-        dd_test = dd_test.join(motion_grps, how='left')
+        # motion_grps = df[['no_motion_grp', 'random_motion_grp']].copy()
+        # motion_grps['ind'] = motion_grps.index
+        # motion_grps = motion_grps.drop_duplicates()[['no_motion_grp', 'random_motion_grp']]
+        # dd_test = dd_test.join(motion_grps, how='left')
 
         dd_test['mean_pred'] = dd_test.mean(1)
         dd_test = dd_test.join(df_single_source[['age']], how='left')
@@ -186,36 +185,36 @@ def stacking(out_path, target, selection_crit, source_dict, source_selection_dic
             plt.savefig(os.path.abspath('scatter_test_' + file_pref + '_' + '_' + m + '_.pdf'))
             plt.close()
 
-        # MOTION BALANCING
-        if run_fitting:  # only run if not from a 'predict from trained model' single source stream
-            X_test_no_motion, y_test_no_motion = dd_test.ix[dd_test.no_motion_grp, single_sources], dd_test.ix[
-                dd_test.no_motion_grp, 'age']
-            y_predicted_train_no_motion = rf.predict(X_test_no_motion)
-            dd_test.ix[dd_test.no_motion_grp, 'pred_age_no_motion'] = y_predicted_train_no_motion
-
-            X_test_random_motion, y_test_random_motion = dd_test.ix[dd_test.random_motion_grp, single_sources], \
-                                                         dd_test.ix[
-                                                             dd_test.random_motion_grp, 'age']
-            y_predicted_train_random_motion = rf.predict(X_test_random_motion)
-            dd_test.ix[dd_test.random_motion_grp, 'pred_age_random_motion'] = y_predicted_train_random_motion
-
-            m = 'pred_age_no_motion'
-            y_true = y_test_no_motion
-            y_pred = y_predicted_train_no_motion
-            scores_test.ix[m, 'r2'] = r2_score(y_true, y_pred)
-            scores_test.ix[m, 'rpear'] = np.corrcoef(y_true, y_pred)[0, 1]
-            scores_test.ix[m, 'rpear2'] = np.corrcoef(y_true, y_pred)[0, 1] ** 2
-            scores_test.ix[m, 'mae'] = mean_absolute_error(y_true, y_pred)
-            scores_test.ix[m, 'medae'] = median_absolute_error(y_true, y_pred)
-
-            m = 'pred_age_random_motion'
-            y_true = y_test_random_motion
-            y_pred = y_predicted_train_random_motion
-            scores_test.ix[m, 'r2'] = r2_score(y_true, y_pred)
-            scores_test.ix[m, 'rpear'] = np.corrcoef(y_true, y_pred)[0, 1]
-            scores_test.ix[m, 'rpear2'] = np.corrcoef(y_true, y_pred)[0, 1] ** 2
-            scores_test.ix[m, 'mae'] = mean_absolute_error(y_true, y_pred)
-            scores_test.ix[m, 'medae'] = median_absolute_error(y_true, y_pred)
+        # # MOTION BALANCING
+        # if run_fitting:  # only run if not from a 'predict from trained model' single source stream
+        #     X_test_no_motion, y_test_no_motion = dd_test.ix[dd_test.no_motion_grp, single_sources], dd_test.ix[
+        #         dd_test.no_motion_grp, 'age']
+        #     y_predicted_train_no_motion = rf.predict(X_test_no_motion)
+        #     dd_test.ix[dd_test.no_motion_grp, 'pred_age_no_motion'] = y_predicted_train_no_motion
+        #
+        #     X_test_random_motion, y_test_random_motion = dd_test.ix[dd_test.random_motion_grp, single_sources], \
+        #                                                  dd_test.ix[
+        #                                                      dd_test.random_motion_grp, 'age']
+        #     y_predicted_train_random_motion = rf.predict(X_test_random_motion)
+        #     dd_test.ix[dd_test.random_motion_grp, 'pred_age_random_motion'] = y_predicted_train_random_motion
+        #
+        #     m = 'pred_age_no_motion'
+        #     y_true = y_test_no_motion
+        #     y_pred = y_predicted_train_no_motion
+        #     scores_test.ix[m, 'r2'] = r2_score(y_true, y_pred)
+        #     scores_test.ix[m, 'rpear'] = np.corrcoef(y_true, y_pred)[0, 1]
+        #     scores_test.ix[m, 'rpear2'] = np.corrcoef(y_true, y_pred)[0, 1] ** 2
+        #     scores_test.ix[m, 'mae'] = mean_absolute_error(y_true, y_pred)
+        #     scores_test.ix[m, 'medae'] = median_absolute_error(y_true, y_pred)
+        #
+        #     m = 'pred_age_random_motion'
+        #     y_true = y_test_random_motion
+        #     y_pred = y_predicted_train_random_motion
+        #     scores_test.ix[m, 'r2'] = r2_score(y_true, y_pred)
+        #     scores_test.ix[m, 'rpear'] = np.corrcoef(y_true, y_pred)[0, 1]
+        #     scores_test.ix[m, 'rpear2'] = np.corrcoef(y_true, y_pred)[0, 1] ** 2
+        #     scores_test.ix[m, 'mae'] = mean_absolute_error(y_true, y_pred)
+        #     scores_test.ix[m, 'medae'] = median_absolute_error(y_true, y_pred)
 
         # save
         rf_file = os.path.abspath(file_pref + 'stacking_fitted_model.pkl')

@@ -98,10 +98,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
 
     data_str = target_name + '__' + selection_criterium + '__' + data_str
 
-    variables = ['train_mae', 'train_r2', 'cv_r2', 'cv_mae', 'cv_r2_mean', 'cv_r2_std', 'no_motion_r2',
-                 'random_motion_r2',
-                 'no_motion_mae', 'random_motion_mae', 'y_no_motion', 'y_random_motion', 'y_predicted_no_motion',
-                 'y_predicted_random_motion', 'y_predicted_cv']
+    variables = ['train_mae', 'train_r2', 'cv_r2', 'cv_mae', 'cv_r2_mean', 'cv_r2_std', 'y_predicted_cv']
     for v in variables:
         try:
             exec (v)
