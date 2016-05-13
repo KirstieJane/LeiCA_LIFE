@@ -64,8 +64,10 @@ df_mr_dup = df_mr_orig[df_mr_orig.index.duplicated(keep=False)]
 df_mr = df_mr_orig.drop_duplicates(subset='MRT_SIC', keep='last')
 
 # Deal with special duplicate case: data missing on second time point -> use first
-df_mr.drop('LI00002611', axis=0, inplace=True)
-df_mr.loc['LI00002611'] = df_mr_dup.loc['LI00002611'].ix[0, :]
+bad_subj = pd.read_csv('/Users/franzliem/PowerFolders/LIFE/behavioral/subject_exclusion/double_s_w_missing_data_in_second_tp.txt', header=None)[0].values[0]
+
+df_mr.drop(bad_subj, axis=0, inplace=True)
+df_mr.loc[bad_subj] = df_mr_dup.loc[bad_subj].ix[0, :]
 
 df = df.join(df_mr, how='outer')
 df['t_days'] = (df.MRT_DATUM - df.MRT_DATUM.min()).dt.days
@@ -164,7 +166,7 @@ df_befund.set_index('SIC', inplace=True)
 # Frauke: mri_lesion_num. Du solltest 2-5 und 999999 ausschliessen, 0 und 1 sind ok
 # ischemic, hemorraghic, both, traumatic (coded as 2-5), +missing (999999) lesions
 df_befund['neurol_healthy'] = False
-df_befund.loc[df_befund['mri_lesion_num'] <= 2, ['neurol_healthy']] = True
+df_befund.loc[df_befund['mri_lesion_num'] < 2, ['neurol_healthy']] = True
 df_befund['MRT_BefundFazekas'] = pd.to_numeric(df_befund.MRT_BefundFazekas, 'coerce')
 
 df = df.join(df_befund[['MRT_BefundFazekas', 'mri_lesion_num', 'mri_tumors_num', 'neurol_healthy']], how='inner')
@@ -191,20 +193,9 @@ df = df.join(df_lesvol[['WM_gesamt', 'wmh', 'wmh_ln', 'wmh_norm', 'wmh_norm_ln']
 
 
 # DROP SUBJECTS bad FS
-bad_subj = ['LI01371995',
-            'LI00104318',
-            'LI02167432',
-            'LI03180515',
-            'LI02221211',
-            'LI0175257X',
-            'LI03393297',
-            'LI01647059',
-            'LI03671610',
-            'LI03511532',
-            'LI03467212',
-            'LI0300607X',
-            'LI0049109X',
-            'LI01530759']
+bad_subj = pd.read_csv('/Users/franzliem/PowerFolders/LIFE/behavioral/subject_exclusion/FS_bad.txt', header=None)[0].values
+
+
 for bad in bad_subj:
     if bad in df.index:
         df.drop(bad, inplace=True)
