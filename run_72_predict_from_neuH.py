@@ -9,7 +9,7 @@ from variables import wd_root_path, ds_root_path
 
 wd_root_path = '/data/liem-3/LeiCA_LIFE_learning_predict_all_wd'
 ds_root_path = '/scr/adenauer2/Franz/LeiCA_LIFE/'
-
+training='training_life_only'
 
 subjects_selection_crit_names_list =['bothSexes_FD06']
 
@@ -24,8 +24,8 @@ plugin_name = 'MultiProc'
 
 
 trained_model_template = {
-    'trained_model': 'learning_out/group_learning_prepare_data/{ana_stream}trained_model/' +
-                     '_multimodal_in_data_name_{multimodal_in_data_name}/_selection_criterium_bothSexes_neuH_FD06_norm/' +
+    'trained_model': 'learning_out/'+training+'/group_learning_prepare_data/{ana_stream}trained_model/' +
+                     '_multimodal_in_data_name_{multimodal_in_data_name}/_selection_criterium_bothSexes_neuH_FD06/' +
                      '_target_name_{target_name}/trained_model.pkl'}
 
 learning_predict_data_wf(working_dir=working_dir,

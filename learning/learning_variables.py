@@ -7,6 +7,7 @@ subjects_selection_crit_dict = {}
 subjects_selection_crit_dict['bothSexes'] = ["n_TRs > 294"]
 subjects_selection_crit_dict['bothSexes_neuH'] = ["n_TRs > 294", "neurol_healthy==True"]
 subjects_selection_crit_dict['bothSexes_neuH_FD06'] = ["n_TRs > 294", "neurol_healthy==True", "mean_FD_P<0.6"]
+subjects_selection_crit_dict['bothSexes_neuH_FD06_ncd_norm'] = ["n_TRs > 294", "neurol_healthy==True", "mean_FD_P<0.6", "ncd_group=='norm'"]
 subjects_selection_crit_dict['bothSexes_FD06'] = ["n_TRs > 294", "mean_FD_P<0.6"]
 subjects_selection_crit_dict['bothSexes_neuH_FD06_norm'] = ["n_TRs > 294", "neurol_healthy==True", "mean_FD_P<0.6",
                                                             "cs_mean_group_int == 0"] # equiv to cs_mean_group == 'norm'
@@ -42,7 +43,7 @@ in_data_name_list = [
 ]
 
 # subjects_selection_crit_names_list = ['bothSexes_neuH']
-subjects_selection_crit_names_list = ['bothSexes_neuH_FD06', 'bothSexes_FD06'] #, 'bothSexes_neuH_FD06_norm']
+subjects_selection_crit_names_list = ['bothSexes_neuH_FD06'] #, 'bothSexes_neuH_FD06_norm']
 
 target_list = ['age']
 

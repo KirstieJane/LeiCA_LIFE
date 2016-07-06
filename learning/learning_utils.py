@@ -74,7 +74,8 @@ def select_multimodal_X_fct(X_multimodal_file, subjects_selection_index):
 # PREDICTION
 # and helpers for residualizing and plotting
 def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, data_str, regress_confounds=False,
-                             run_cv=False, n_jobs_cv=1, run_tuning=False, X_file_nki=None, df_file_nki=None):
+                             run_cv=False, n_jobs_cv=1, run_tuning=False, X_file_nki=None, df_file_nki=None,
+                             reverse_split=False):
     import os, pickle
     import numpy as np
     import pandas as pd
@@ -132,6 +133,12 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
                                                      stratify=df_life['age_bins'].values,
                                                      test_size=0.5,
                                                      random_state=666)
+    if reverse_split:
+        X_train_life, X_test_life = X_test_life, X_train_life
+        y_train_life, y_test_life = y_test_life, y_train_life
+        confounds_train_life, confounds_test_life = confounds_test_life, confounds_train_life
+        ind_train_life, ind_test_life = ind_test_life, ind_train_life
+
     df_life.ix[ind_train_life, 'split_group'] = 'train'
     df_life.ix[ind_test_life, 'split_group'] = 'test'
     df_train_life = df_life.ix[ind_train_life, ['age_bins', 'study']]
@@ -163,6 +170,11 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
                                                        stratify=df_nki['age_bins'].values,
                                                        train_size=0.1,
                                                        random_state=666)
+        if reverse_split:
+            X_train_nki, X_test_nki = X_test_nki, X_train_nki
+            y_train_nki, y_test_nki = y_test_nki, y_train_nki
+            confounds_train_nki, confounds_test_nki = confounds_test_nki, confounds_train_nki
+            ind_train_nki, ind_test_nki = ind_test_nki, ind_train_nki
 
         df_nki['train_group_2samp'] = np.nan
         df_nki.ix[ind_train_nki, 'train_group_2samp'] = True
@@ -313,7 +325,6 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
 
     else:
         scatter_file_cv = empty_file
-
 
     brain_age_scatter_file = plot_brain_age(y_test, y_predicted, data_str)
 
@@ -681,4 +692,3 @@ def run_prediction_from_trained_model_fct(trained_model_file, X_file, target_nam
     df_res.to_pickle(df_res_out_file)
 
     return scatter_file, brain_age_scatter_file, df_use_file, df_res_out_file
-

@@ -15,7 +15,8 @@ def learning_predict_data_2samp_wf(working_dir,
                                    run_2sample_training=False,
                                    aggregated_subjects_dir_nki=None,
                                    subjects_selection_crit_dict_nki=None,
-                                   subjects_selection_crit_name_nki=None):
+                                   subjects_selection_crit_name_nki=None,
+                                   reverse_split=False):
     import os
     from nipype import config
     from nipype.pipeline.engine import Node, Workflow
@@ -242,7 +243,8 @@ def learning_predict_data_2samp_wf(working_dir,
                                                        'run_cv',
                                                        'n_jobs_cv',
                                                        'X_file_nki',
-                                                       'df_file_nki'],
+                                                       'df_file_nki',
+                                                       'reverse_split'],
                                           output_names=['scatter_file',
                                                         'brain_age_scatter_file',
                                                         'df_life_out_file',
@@ -274,6 +276,7 @@ def learning_predict_data_2samp_wf(working_dir,
         the_in_node.inputs.run_cv = run_cv
         the_in_node.inputs.n_jobs_cv = n_jobs_cv
         the_in_node.inputs.run_tuning = run_tuning
+        the_in_node.inputs.reverse_split = reverse_split
 
         wf.connect(select_multimodal_X, 'X_multimodal_selected_file', the_in_node, 'X_file')
         wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')

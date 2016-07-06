@@ -64,7 +64,10 @@ df_mr_dup = df_mr_orig[df_mr_orig.index.duplicated(keep=False)]
 df_mr = df_mr_orig.drop_duplicates(subset='MRT_SIC', keep='last')
 
 # Deal with special duplicate case: data missing on second time point -> use first
-bad_subj = pd.read_csv('/Users/franzliem/PowerFolders/LIFE/behavioral/subject_exclusion/double_s_w_missing_data_in_second_tp.txt', header=None)[0].values[0]
+bad_subj = \
+    pd.read_csv(
+        '/Users/franzliem/PowerFolders/LIFE/behavioral/subject_exclusion/double_s_w_missing_data_in_second_tp.txt',
+        header=None)[0].values[0]
 
 df_mr.drop(bad_subj, axis=0, inplace=True)
 df_mr.loc[bad_subj] = df_mr_dup.loc[bad_subj].ix[0, :]
@@ -193,37 +196,37 @@ df = df.join(df_lesvol[['WM_gesamt', 'wmh', 'wmh_ln', 'wmh_norm', 'wmh_norm_ln']
 
 
 # DROP SUBJECTS bad FS
-bad_subj = pd.read_csv('/Users/franzliem/PowerFolders/LIFE/behavioral/subject_exclusion/FS_bad.txt', header=None)[0].values
-
+bad_subj = pd.read_csv('/Users/franzliem/PowerFolders/LIFE/behavioral/subject_exclusion/FS_bad.txt', header=None)[
+    0].values
 
 for bad in bad_subj:
     if bad in df.index:
         df.drop(bad, inplace=True)
 
 # ADD COGNTIION SCORE
-# see cog_score.ipynb
-df_cs = pd.read_pickle('Jana_20160429/CogState_20160504.pkl')
-df_cs.drop(['Geschlecht', 'age'], axis=1, inplace=True)
-df = df.join(df_cs, how='left')
+df_cs = pd.read_csv('Jana_20160518/20160518_zstand_age_sex_healthy_only.csv',
+                    index_col=0, na_values=[99, 999])  # [['NCD']]
+df_cs = df_cs.ix[df_cs.N_valid_domains >= 3, :]
+df_cs.ix[((df_cs.Domain_mildNCD == 0) & (df_cs.Domain_majNCD == 0)), 'ncd_group'] = 'norm'
+df_cs.ix[((df_cs.Domain_mildNCD > 0) & (df_cs.Domain_majNCD == 0)), 'ncd_group'] = 'mild'
+df_cs.ix[df_cs.Domain_majNCD > 0, 'ncd_group'] = 'major'
+df_cs['ncd_group_int'] = df_cs.ncd_group.replace({'norm': 0, 'mild': 1, 'major': 2})
 
+df = df.join(df_cs[['ncd_group', 'ncd_group_int']], how='left')
+
+
+#######
 n['post befund'] = len(df)
 n['neurol healthy'] = len(df.query('neurol_healthy'))
 
 print('N SUBJECTS')
 print(n)
 
-
 # REDUCE BEHAV TO MINIMAL
 keep_cols = ['MRT_DATUM', 'MRT_GRUPPE', 't_days', 'age', 'sex',
              'MRT_BefundFazekas', 'mri_lesion_num', 'mri_tumors_num', 'neurol_healthy',
              'WM_gesamt', 'wmh', 'wmh_ln', 'wmh_norm', 'wmh_norm_ln',
-
-             'CS_attention_agenorm', 'CS_executive_agenorm', 'CS_memory_agenorm', 'CS_fluency_agenorm',
-             'CS_attention', 'CS_executive', 'CS_memory', 'CS_fluency',
-             'cs_mean_agenorm', 'cs_mean_z_agenorm',
-             'n_mild_agenorm', 'n_major_agenorm', 'cs_group_agenorm', 'cs_group_agenorm_int',
-             'cs_mean', 'cs_mean_z',
-             'n_mild', 'n_major', 'cs_group', 'cs_group_int']
+             'ncd_group', 'ncd_group_int']
 
 df = df[keep_cols]
 
