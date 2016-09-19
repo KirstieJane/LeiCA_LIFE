@@ -75,7 +75,7 @@ def select_multimodal_X_fct(X_multimodal_file, subjects_selection_index):
 # and helpers for residualizing and plotting
 def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, data_str, regress_confounds=False,
                              run_cv=False, n_jobs_cv=1, run_tuning=False, X_file_nki=None, df_file_nki=None,
-                             reverse_split=False):
+                             reverse_split=False, random_state_nki=666):
     import os, pickle
     import numpy as np
     import pandas as pd
@@ -169,7 +169,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
                                                        ind_nki,
                                                        stratify=df_nki['age_bins'].values,
                                                        train_size=0.1,
-                                                       random_state=666)
+                                                       random_state=random_state_nki)
         if reverse_split:
             X_train_nki, X_test_nki = X_test_nki, X_train_nki
             y_train_nki, y_test_nki = y_test_nki, y_train_nki
