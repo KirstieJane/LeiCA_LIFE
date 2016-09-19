@@ -10,9 +10,9 @@ from learning.learning_variables import in_data_name_list, subjects_selection_cr
 i_randomization = int(sys.argv[1])
 
 
-use_n_procs = 30
+use_n_procs = 3
 plugin_name = 'MultiProc'
-n_randomizations = 2
+#n_randomizations = 2
 
 working_dir = '/data/liem-3/LeiCA_LIFE_learning_wd/wd_learning'
 ds_dir = '/scr/adenauer2/Franz/LeiCA_LIFE/learning_out/training_life_only'
