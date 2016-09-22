@@ -75,7 +75,7 @@ def select_multimodal_X_fct(X_multimodal_file, subjects_selection_index):
 # and helpers for residualizing and plotting
 def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, data_str, regress_confounds=False,
                              run_cv=False, n_jobs_cv=1, run_tuning=False, X_file_nki=None, df_file_nki=None,
-                             reverse_split=False, random_state_nki=666):
+                             reverse_split=False, random_state_nki=666, run_learning_curve=False):
     import os, pickle
     import numpy as np
     import pandas as pd
@@ -314,6 +314,17 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
 
 
 
+    if run_learning_curve:
+        X_full = np.vstack((X_train_life, X_test_life))
+        y_full = np.hstack((y_train_life, y_test_life))
+        from sklearn.learning_curve import learning_curve
+        train_sizes, train_scores, test_scores = learning_curve(pipe, X_full, y_full, cv=5, n_jobs=n_jobs_cv,
+                                                                train_sizes=np.linspace(0.1, 1.0, 10))
+
+        learning_curve_plot(train_sizes, train_scores, test_scores, 'learning curve', data_str,
+                            post_str='_training_curve')
+
+
     #### SCATTER PLOTS
     title_str = 'r2: {:.3f} MAE:{:.3f}'.format(test_r2, test_mae)
     scatter_file = pred_real_scatter(y_test, y_predicted, title_str, data_str)
@@ -463,6 +474,45 @@ def plot_brain_age(y_test, y_test_predicted, in_data_name):
     pp.savefig()
     pp.close()
     return scatter_file
+
+
+def learning_curve_plot(train_sizes, train_scores, test_scores, title_str, in_data_name, post_str=''):
+    import os
+    import pylab as plt
+    from matplotlib.backends.backend_pdf import PdfPages
+    import pandas as pd
+
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+
+    plt.figure()
+    plt.xlabel("Training examples")
+    plt.ylabel("Score")
+    plt.grid()
+    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
+                     train_scores_mean + train_scores_std, alpha=0.1,
+                     color="r")
+    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
+                     test_scores_mean + test_scores_std, alpha=0.1, color="g")
+    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
+             label="Training score")
+    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
+             label="Cross-validation score")
+    plt.legend(loc="best")
+
+    plot_file = os.path.join(os.getcwd(), 'learning_curve_' + in_data_name + post_str + '.pdf')
+    df_file = os.path.join(os.getcwd(), 'learning_curve_' + in_data_name + post_str + '.txt')
+    pp = PdfPages(plot_file)
+    pp.savefig()
+    pp.close()
+    df_learning_curve=pd.DataFrame({'train_sizes':train_sizes, 'train_scores_mean':
+        train_scores_mean, 'train_scores_std': train_scores_std, 'test_scores_mean': test_scores_mean,
+                                    'test_scores_std': test_scores_std})
+    df_learning_curve.to_csv(df_file)
+
+    return plot_file, df_file
 
 
 ###############################################################################################################
