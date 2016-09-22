@@ -11,8 +11,8 @@ use_n_procs = 6
 plugin_name = 'MultiProc'
 
 
-working_dir = '/data/liem-3/LeiCA_LIFE_learning_wd/wd_learning'
-ds_dir = '/scr/adenauer2/Franz/LeiCA_LIFE/learning_out/training_life_only_training_curve'
+working_dir = '/data/liem-3/LeiCA_LIFE_learning_wd/wd_learning_learning_curve'
+ds_dir = '/scr/adenauer2/Franz/LeiCA_LIFE/learning_out/training_life_only_learning_curve'
 aggregated_subjects_dir = '/scr/adenauer2/Franz/LeiCA_LIFE/learning_out/vectorized_aggregated_data'
 
 aggregated_subjects_dir_nki = '/scr/adenauer2/Franz/LeiCA_NKI/learning_out/vectorized_aggregated_data'
