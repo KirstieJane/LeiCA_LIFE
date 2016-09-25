@@ -18,7 +18,8 @@ def learning_predict_data_2samp_wf(working_dir,
                                    subjects_selection_crit_name_nki=None,
                                    reverse_split=False,
                                    random_state_nki=666,
-                                   run_learning_curve=False):
+                                   run_learning_curve=False,
+                                   life_test_size=0.5):
     import os
     from nipype import config
     from nipype.pipeline.engine import Node, Workflow
@@ -26,7 +27,7 @@ def learning_predict_data_2samp_wf(working_dir,
     import nipype.interfaces.io as nio
     from itertools import chain
     from learning_utils import aggregate_multimodal_metrics_fct, run_prediction_split_fct, \
-        backproject_and_split_weights_fct, select_subjects_fct, select_multimodal_X_fct
+        backproject_and_split_weights_fct, select_subjects_fct, select_multimodal_X_fct, learning_curve_plot
     import pandas as pd
 
 
@@ -249,7 +250,8 @@ def learning_predict_data_2samp_wf(working_dir,
                                                        'df_file_nki',
                                                        'reverse_split',
                                                        'random_state_nki',
-                                                       'run_learning_curve'],
+                                                       'run_learning_curve',
+                                                       'life_test_size'],
                                           output_names=['scatter_file',
                                                         'brain_age_scatter_file',
                                                         'df_life_out_file',
@@ -258,7 +260,9 @@ def learning_predict_data_2samp_wf(working_dir,
                                                         'model_out_file',
                                                         'df_res_out_file',
                                                         'tuning_curve_file',
-                                                        'scatter_file_cv'],
+                                                        'scatter_file_cv',
+                                                        'learning_curve_plot_file',
+                                                        'learning_curve_df_file'],
                                           function=run_prediction_split_fct),
                             name='prediction_split')
 
@@ -284,6 +288,7 @@ def learning_predict_data_2samp_wf(working_dir,
         the_in_node.inputs.reverse_split = reverse_split
         the_in_node.inputs.random_state_nki = random_state_nki
         the_in_node.inputs.run_learning_curve = run_learning_curve
+        the_in_node.inputs.life_test_size = life_test_size
 
         wf.connect(select_multimodal_X, 'X_multimodal_selected_file', the_in_node, 'X_file')
         wf.connect(target_infosource, 'target_name', the_in_node, 'target_name')
@@ -301,6 +306,8 @@ def learning_predict_data_2samp_wf(working_dir,
         wf.connect(the_in_node, 'df_res_out_file', ds_pdf, the_out_node_str + 'results_error')
         wf.connect(the_in_node, 'tuning_curve_file', ds_pdf, the_out_node_str + 'tuning_curve')
         wf.connect(the_in_node, 'scatter_file_cv', ds_pdf, the_out_node_str + 'scatter_cv')
+        wf.connect(the_in_node, 'learning_curve_plot_file', ds_pdf, the_out_node_str + 'learning_curve_plot_file.@plot')
+        wf.connect(the_in_node, 'learning_curve_df_file', ds_pdf, the_out_node_str + 'learning_curve_df_file.@df')
 
         # NKI
         if run_2sample_training:

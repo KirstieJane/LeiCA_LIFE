@@ -75,7 +75,7 @@ def select_multimodal_X_fct(X_multimodal_file, subjects_selection_index):
 # and helpers for residualizing and plotting
 def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, data_str, regress_confounds=False,
                              run_cv=False, n_jobs_cv=1, run_tuning=False, X_file_nki=None, df_file_nki=None,
-                             reverse_split=False, random_state_nki=666, run_learning_curve=False):
+                             reverse_split=False, random_state_nki=666, run_learning_curve=False, life_test_size=0.5):
     import os, pickle
     import numpy as np
     import pandas as pd
@@ -86,7 +86,8 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
     from sklearn.pipeline import Pipeline
     from sklearn.metrics import r2_score, mean_absolute_error
     from sklearn.utils import shuffle
-    from LeiCA_LIFE.learning.learning_utils import pred_real_scatter, plot_brain_age, residualize_group_data
+    from LeiCA_LIFE.learning.learning_utils import pred_real_scatter, plot_brain_age, residualize_group_data, \
+        learning_curve_plot
 
     if X_file_nki:
         run_2sample_training = True
@@ -131,7 +132,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
                                                      confounds_life,
                                                      ind_life,
                                                      stratify=df_life['age_bins'].values,
-                                                     test_size=0.5,
+                                                     test_size=life_test_size,
                                                      random_state=666)
     if reverse_split:
         X_train_life, X_test_life = X_test_life, X_train_life
@@ -312,8 +313,6 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         # df_big.ix[df_big_ind_train, 'cv_test_fold'] = cv_test_fold
         df_train['cv_test_fold'] = cv_test_fold
 
-
-
     if run_learning_curve:
         X_full = np.vstack((X_train_life, X_test_life))
         y_full = np.hstack((y_train_life, y_test_life))
@@ -321,8 +320,11 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         train_sizes, train_scores, test_scores = learning_curve(pipe, X_full, y_full, cv=5, n_jobs=n_jobs_cv,
                                                                 train_sizes=np.linspace(0.1, 1.0, 10))
 
-        learning_curve_plot(train_sizes, train_scores, test_scores, 'learning curve', data_str,
-                            post_str='_training_curve')
+        learning_curve_plot_file, learning_curve_df_file = learning_curve_plot(train_sizes, train_scores, test_scores,
+                                                                               'learning curve', data_str,
+                                                                               post_str='_training_curve')
+    else:
+        learning_curve_plot_file, learning_curve_df_file = empty_file, empty_file
 
 
     #### SCATTER PLOTS
@@ -417,7 +419,7 @@ def run_prediction_split_fct(X_file, target_name, selection_criterium, df_file, 
         pickle.dump(pipe, f)
 
     return scatter_file, brain_age_scatter_file, df_life_out_file, df_nki_out_file, df_big_out_file, model_out_file, df_res_out_file, \
-           tuning_curve_file, scatter_file_cv
+           tuning_curve_file, scatter_file_cv, learning_curve_plot_file, learning_curve_df_file
 
 
 def residualize_group_data(signals, confounds):
@@ -477,7 +479,7 @@ def plot_brain_age(y_test, y_test_predicted, in_data_name):
 
 
 def learning_curve_plot(train_sizes, train_scores, test_scores, title_str, in_data_name, post_str=''):
-    import os
+    import os, numpy as np
     import pylab as plt
     from matplotlib.backends.backend_pdf import PdfPages
     import pandas as pd
@@ -507,9 +509,9 @@ def learning_curve_plot(train_sizes, train_scores, test_scores, title_str, in_da
     pp = PdfPages(plot_file)
     pp.savefig()
     pp.close()
-    df_learning_curve=pd.DataFrame({'train_sizes':train_sizes, 'train_scores_mean':
+    df_learning_curve = pd.DataFrame({'train_sizes': train_sizes, 'train_scores_mean':
         train_scores_mean, 'train_scores_std': train_scores_std, 'test_scores_mean': test_scores_mean,
-                                    'test_scores_std': test_scores_std})
+                                      'test_scores_std': test_scores_std})
     df_learning_curve.to_csv(df_file)
 
     return plot_file, df_file
